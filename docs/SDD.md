@@ -21,7 +21,7 @@ The application supports three user roles: Field Medic, Medical Officer / Platoo
 
 MediTrack uses a layered architecture split into four layers: UI, Logic, Model, and Storage. Each layer only talks to the one directly next to it, which makes the system easier to reason about and test independently.
 
-![Architecture Diagram](archi.excalidraw.svg)
+![Architecture Diagram](system_architecture.png)
 
 ### 2.1 Layer Responsibilities
 
@@ -79,11 +79,11 @@ Key classes:
 - `Command` (abstract): base class for all commands
 - Concrete commands: `AddSupplyCommand`, `EditSupplyCommand`, `DeleteSupplyCommand`, `AddPersonnelCommand`, `RemovePersonnelCommand`, `UpdateStatusCommand`, `GenerateRosterCommand`, `GenerateResupplyReportCommand`
 
-Role enforcement happens inside `LogicManager.executeCommand()` before any command actually runs. If the current role doesn't have permission, a `CommandException` is thrown and the UI shows it as an error result.
+LogicManager reads the role from model.getSession().getRole() If the current role doesn't have permission, a CommandException is thrown and the UI shows it as an error result.
 
 ### 3.3 Parser Component
 
-The Parser is a validation-only utility. The UI calls it after the user hits Confirm on any form, before building the Command object. It checks each field against the rules for that command type and throws a `ParseException` with a clear message if anything fails.
+The Parser is a validation-only utility. The UI calls it after the user hits Confirm on any form, before building the Command object. It checks each field against the rules for that command type and throws a ParseException with a clear message if anything fails.
 
 Key classes:
 - `Parser`: exposes `validate(CommandType, Map<String, String>)`
@@ -106,6 +106,7 @@ Validation rules by command:
 The Model component is responsible for holding the application's in-memory state. It exposes `ObservableList`s so that JavaFX can automatically update the UI whenever the underlying data changes, and provides filter and query methods used by the report screens.
 
 Key classes:
+- `Session` : tracks which Role is currently logged in
 - `ModelManager`: the concrete implementation of the `Model` interface that acts as the central point of access for all data operations
 - `MediTrack`: the root data container, holding both the supply list and the personnel list
 - `Supply`: represents a medical supply item with a name (String), quantity (int), and expiryDate (LocalDate)
@@ -139,11 +140,11 @@ Key classes:
 
 ### 4.1 Class Diagram
 
-![Class Diagram](class.svg)
+![Class Diagram](classdiag.svg)
 
 ### 4.2 Sequence Diagram — Add Supply
 
-![Add Supply](Add_supply.svg)
+![Add Supply](sequencediag.svg)
 
 **Note:** If `Parser.validate()` throws a `ParseException`, the UI catches it and displays the error without ever calling `Logic.executeCommand()`. The sequence diagram only covers the happy path.
 
