@@ -2,29 +2,39 @@
 
 ## Introduction
 
-MediTrack is a standalone Java desktop point-and-click GUI application engineered to streamline medical logistics and personnel readiness for military field units. To ensure the system remains maintainable, scalable, and easy to test, it is built upon a modular layered architecture.
+MediTrack is a standalone Java desktop point-and-click GUI application engineered to streamline medical logistics and 
+personnel readiness for military field units. To ensure the system remains maintainable, scalable, and easy to test, 
+it is built upon a modular layered architecture.
 
-The system relies on internal APIs to establish clear contracts between its core components: the **UI**, **Parser**, **Logic**, **Model**, **Storage**, and **PasswordManager**. This document outlines the primary methods that facilitate data flow, command execution, and state management across these module boundaries.
+The system relies on internal APIs to establish clear contracts between its core components: the **UI**, **Parser**, 
+**Logic**, **Model**, **Storage**, and **PasswordManager**. This document outlines the primary methods that facilitate 
+data flow, command execution, and state management across these module boundaries.
 
-All user interactions are performed via clickable GUI controls (buttons, dropdowns, modals). The UI collects typed field values from forms and constructs Command objects directly — there is no command-line input box and no string encoding of user input.
+All user interactions are performed via clickable GUI controls (buttons, dropdowns, modals). The UI collects typed 
+field values from forms and constructs Command objects directly — there is no command-line input box and no string 
+encoding of user input.
 
 ---
 
 ## 1. Parser API
 
-The Parser component serves strictly as a validation utility. Before the UI constructs a Command object, it passes the raw user input to the Parser to ensure data integrity. It does not parse strings or construct Command objects itself.
+The Parser component serves strictly as a validation utility. Before the UI constructs a Command object, it passes the 
+raw user input to the Parser to ensure data integrity. It does not parse strings or construct Command objects itself.
 
 ### `Parser.validate(CommandType commandType, Map<String, String> fields)`
-* **Description:** Validates raw string inputs from the UI against the specific business rules of the requested command type. Checks include: non-empty required fields, positive integer quantities, future expiry dates, and valid status enum values.
+* **Description:** Validates raw string inputs from the UI against the specific business rules of the requested 
+command type. Checks include: non-empty required fields, positive integer quantities, future expiry dates, and 
+valid status enum values.
 * **Parameters / inputs:** 
   * `commandType` (CommandType): The type of action being requested (e.g., `ADD_SUPPLY`).
   * `fields` (Map<String, String>): A key-value map of the raw input strings from the UI form.
 * **Return values:** `void` - Completes silently if validation passes.
-* **Exceptions:** Throws a `ParseException` containing a user-friendly error message indicating which field failed and why.
+* **Exceptions:** Throws a `ParseException` containing a user-friendly error message indicating which field failed 
+and why.
 * **Validation rules by command type:**
 
   | Command | Rules enforced |
-    |---|---|
+  |---|---|
   | `ADD_SUPPLY` / `EDIT_SUPPLY` | Name non-empty, quantity > 0, expiry date is a valid future date, no duplicate name on add |
   | `DELETE_SUPPLY` / `REMOVE_PERSONNEL` | Index is a positive integer within list bounds |
   | `ADD_PERSONNEL` | Name non-empty, status is a valid Status enum value |
@@ -57,14 +67,20 @@ The Parser component serves strictly as a validation utility. Before the UI cons
 
 ## 2. Logic API
 
-The Logic component is the main execution engine of the application. Utilizing the Command Pattern, it receives pre-validated Command objects from the UI, verifies role-based permissions via the Session, executes the action against the Model, and triggers a save via Storage after every state-changing operation.
+The Logic component is the main execution engine of the application. Utilizing the Command Pattern, it receives 
+pre-validated Command objects from the UI, verifies role-based permissions via the Session, executes the action 
+against the Model, and triggers a save via Storage after every state-changing operation.
 
 ### `Logic.executeCommand(Command command)`
-* **Description:** Receives a fully constructed and pre-validated Command object from the UI layer, checks the active role via `model.getSession()` to confirm the action is permitted for that role, executes the command against the Model, and saves the updated state to Storage.
+* **Description:** Receives a fully constructed and pre-validated Command object from the UI layer, checks the active 
+role via `model.getSession()` to confirm the action is permitted for that role, executes the command against the Model, 
+and saves the updated state to Storage.
 * **Parameters:** 
   * `command` (Command): A fully constructed Command object built by the UI after successful Parser validation.
-* **Return values:** `CommandResult` - An object containing the feedback message to display to the user and any specific UI update instructions.
-* **Exceptions:** Throws a `CommandException` if the current Session role does not have permission to execute the given command type.
+* **Return values:** `CommandResult` - An object containing the feedback message to display to the user and any 
+specific UI update instructions.
+* **Exceptions:** Throws a `CommandException` if the current Session role does not have permission to execute the 
+given command type.
 * **Example usage:**
 ```java
 Command command = new AddSupplyCommand("Panadol", 50, LocalDate.of(2027, 6, 1));
@@ -75,20 +91,29 @@ CommandResult result = logic.executeCommand(command);
 
 ## 3. Model API
 
-The Model component manages the complete in-memory state of the application, handling all Create, Read, Update, and Delete operations for the Supply inventory and the Personnel roster, as well as the active User Session.
+The Model component manages the complete in-memory state of the application, handling all Create, Read, Update, and 
+Delete operations for the Supply inventory and the Personnel roster, as well as the active User Session.
 
 ### `Model.getSession()`
-* **Description:** Retrieves the current Session object. Used by the Logic component for role enforcement and by the JavaFX UI for observable role binding.
+* **Description:** Retrieves the current Session object. Used by the Logic component for role enforcement and by the 
+JavaFX UI for observable role binding.
 * **Parameters / inputs:** None.
 * **Return values:** `Session` - The active user session.
-* **Example usage:** `Session currentSession = model.getSession();`
+* **Example usage:** 
+```java
+Session currentSession = model.getSession();
+```
 
 ### `Model.setRole(Role role)`
-* **Description:** Sets the active role in the Session after a successful login. Called by the UI login screen after `PasswordManager.checkPassword()` returns true.
+* **Description:** Sets the active role in the Session after a successful login. Called by the UI login screen after 
+`PasswordManager.checkPassword()` returns true.
 * **Parameters / inputs:**
   * `role` (Role): The authenticated role (`FIELD_MEDIC`, `MEDICAL_OFFICER`, or `LOGISTICS_OFFICER`).
 * **Return values:** `void`
-* **Example usage:** `model.setRole(Role.MEDICAL_OFFICER);`
+* **Example usage:** 
+```java
+model.setRole(Role.MEDICAL_OFFICER);
+```
 
 ### `Model.addSupply(Supply supply)`
 * **Description:** Adds a new medical supply item to the active inventory.
@@ -96,85 +121,127 @@ The Model component manages the complete in-memory state of the application, han
   * `supply` (Supply): A valid Supply object containing name, quantity, and expiry date.
 * **Return values:** `void`
 * **Exceptions:** Throws `DuplicateSupplyException` if a supply with the same name already exists.
-* **Example usage:** `model.addSupply(newSupply);`
+* **Example usage:** 
+```java
+model.addSupply(newSupply);
+```
 
 ### `Model.editSupply(Index targetIndex, Supply editedSupply)`
-* **Description:** Replaces the supply record at the given index with the provided updated Supply object. Used when the user confirms changes in the Edit Supply modal.
+* **Description:** Replaces the supply record at the given index with the provided updated Supply object. Used when 
+the user confirms changes in the Edit Supply modal.
 * **Parameters / inputs:**
   * `targetIndex` (Index): The 1-based index of the supply as shown in the UI table.
   * `editedSupply` (Supply): A new Supply object containing the updated field values.
 * **Return values:** `void`
-* **Example usage:** `model.editSupply(Index.fromOneBased(2), new Supply("Bandages", 80, LocalDate.of(2027, 6, 1)));`
+* **Example usage:** 
+```java
+model.editSupply(Index.fromOneBased(2), new Supply("Bandages", 80, LocalDate.of(2027, 6, 1)));
+```
 
 ### `Model.deleteSupply(Index targetIndex)`
 * **Description:** Removes a supply item from the inventory based on its displayed index in the UI table.
 * **Parameters / inputs:** 
   * `targetIndex` (Index): The 1-based index of the item as shown in the GUI list.
 * **Return values:** `Supply` - Returns the deleted supply object for logging or undo purposes.
-* **Example usage:** `Supply removedItem = model.deleteSupply(Index.fromOneBased(1));`
+* **Example usage:** 
+```java
+Supply removedItem = model.deleteSupply(Index.fromOneBased(1));
+```
 
 ### `Model.getFilteredSupplyList()`
-* **Description:** Retrieves the current list of supply items, applying any active filters. Used by the UI to populate the Inventory and Supply Levels screens.
+* **Description:** Retrieves the current list of supply items, applying any active filters. Used by the UI to populate 
+the Inventory and Supply Levels screens.
 * **Parameters / inputs:** None.
 * **Return values:** `ObservableList<Supply>` - A live list that automatically triggers UI updates when modified.
-* **Example usage:** `inventoryTableView.setItems(model.getFilteredSupplyList());`
+* **Example usage:** 
+```java
+inventoryTableView.setItems(model.getFilteredSupplyList());
+```
 
 ### `Model.getExpiringSupplies(int daysThreshold)`
-* **Description:** Returns a filtered list of supply items whose expiry date falls within the given number of days from today's system date.
+* **Description:** Returns a filtered list of supply items whose expiry date falls within the given number of days 
+from today's system date.
 * **Parameters / inputs:**
   * `daysThreshold` (int): The number of days from today to use as the expiry cutoff (e.g., `30`).
 * **Return values:** `List<Supply>` - Supplies expiring within the threshold, sorted by expiry date ascending.`
-* **Example usage:** `List<Supply> expiring = model.getExpiringSupplies(30);`
+* **Example usage:** 
+```java
+List<Supply> expiring = model.getExpiringSupplies(30);
+```
 
 ### `Model.getLowStockSupplies(int quantityThreshold)`
 * **Description:** Returns a filtered list of supply items whose current quantity is below the given threshold.
 * **Parameters / inputs:**
   * `quantityThreshold` (int): The minimum quantity below which a supply is considered low stock (e.g., `20`).
 * **Return values:** `List<Supply>` - Supplies with quantity below the threshold, sorted by quantity ascending.
-* **Example usage:** `List<Supply> lowStock = model.getLowStockSupplies(20);`
+* **Example usage:** 
+```java
+List<Supply> lowStock = model.getLowStockSupplies(20);
+```
 
 ### `Model.addPersonnel(Personnel personnel)`
 * **Description:** Adds a new personnel record to the roster.
 * **Parameters / inputs:**
   * `personnel` (Personnel): A valid `Personnel` object containing name and initial status.
 * **Return values:** `void`
-* **Example usage:** `model.addPersonnel(new Personnel("John Doe", Status.FIT));`
+* **Example usage:** 
+```java
+model.addPersonnel(new Personnel("John Doe", Status.FIT));
+```
 
 ### `Model.deletePersonnel(Index targetIndex)`
 * **Description:** Removes a personnel record from the roster based on its displayed index in the UI table.
 * **Parameters / inputs:**
   * `targetIndex` (Index): The 1-based index of the personnel record as shown in the UI table.
 * **Return values:** `Personnel` - Returns the deleted personnel object.
-* **Example usage:** `Personnel removed = model.deletePersonnel(Index.fromOneBased(3));`
+* **Example usage:** 
+```java
+Personnel removed = model.deletePersonnel(Index.fromOneBased(3));
+```
 
 ### `Model.setPersonnelStatus(Personnel target, Status newStatus)`
-* **Description:** Updates the medical readiness status of a specific personnel record without modifying any other fields.
+* **Description:** Updates the medical readiness status of a specific personnel record without modifying any 
+other fields.
 * **Parameters / inputs:** 
   * `target` (Personnel): The specific personnel object to update.
   * `newStatus` (Status): The new medical status (e.g., `FIT`, `LIGHT_DUTIES`, or `UNFIT`).
 * **Return values:** `void`
-* **Example usage:** `model.setPersonnelStatus(johnDoe, Status.LIGHT_DUTIES);`
+* **Example usage:** 
+```java
+model.setPersonnelStatus(johnDoe, Status.LIGHT_DUTIES);
+```
 
 ### `Model.getFilteredPersonnelList()`
-* **Description:** Retrieves the list of personnel based on the active session's filters (e.g., showing only `FIT` personnel for the Medical Officer). The list updates automatically when the underlying data changes.
+* **Description:** Retrieves the list of personnel based on the active session's filters (e.g., showing only `FIT` 
+personnel for the Medical Officer). The list updates automatically when the underlying data changes.
 * **Parameters / inputs:** None.
 * **Return values:** `ObservableList<Personnel>` - A live list that automatically triggers UI updates when modified.
-* **Example usage:** `personnelTableView.setItems(model.getFilteredPersonnelList());`
+* **Example usage:** 
+```java
+personnelTableView.setItems(model.getFilteredPersonnelList());
+```
 
 ### `Model.generateResupplyReport()`
-* **Description:** Analyzes the inventory and generates a report flagging items with a quantity below 20 or an expiry within 30 days.
+* **Description:** Analyzes the inventory and generates a report flagging items with a quantity below 20 or an expiry 
+within 30 days.
 * **Parameters:** None.
-* **Return values:** `List<ReportItem>` - A structured list containing the flagged items and the reason they were flagged.
-* **Example usage:** `List<ReportItem> report = model.generateResupplyReport();`
+* **Return values:** `List<ReportItem>` - A structured list containing the flagged items and the reason 
+they were flagged.
+* **Example usage:** 
+```java
+List<ReportItem> report = model.generateResupplyReport();
+```
 
 ---
 
 ## 4. Storage API
 
-The Storage component handles reading from and writing to the local hard drive, ensuring data (including security credentials) persists between application sessions without relying on a network or external database.
+The Storage component handles reading from and writing to the local hard drive, ensuring data (including security 
+credentials) persists between application sessions without relying on a network or external database.
 
 ### `Storage.isFirstLaunch()`
-* **Description:** Checks whether the local data file exists. Called at application startup to determine whether to show the first-launch password setup screen or proceed directly to the login screen.
+* **Description:** Checks whether the local data file exists. Called at application startup to determine whether to 
+show the first-launch password setup screen or proceed directly to the login screen.
 * **Parameters / inputs:** None.
 * **Return values:** `boolean` - `true` if data.json does not exist, `false` if it does.
 * **Example usage:** 
@@ -187,35 +254,55 @@ if (storage.isFirstLaunch()) {
 ```
 
 ### `Storage.readMediTrackData()`
-* **Description:** Reads the local JSON file during startup to load the saved inventory, roster data, and the application's master BCrypt password hash into memory.
+* **Description:** Reads the local JSON file during startup to load the saved inventory, roster data, and the 
+application's master BCrypt password hash into memory.
 * **Parameters / inputs:** None.
-* **Return values:** `Optional<ReadOnlyMediTrack>` - Returns the parsed data if the file exists and is valid, or an empty Optional if no previous save data is found.
-* **Example usage:** `Optional<ReadOnlyMediTrack> data = storage.readMediTrackData();`
+* **Return values:** `Optional<ReadOnlyMediTrack>` - Returns the parsed data if the file exists and is valid, or an 
+empty Optional if no previous save data is found.
+* **Example usage:** 
+```java
+Optional<ReadOnlyMediTrack> data = storage.readMediTrackData();
+```
 
 ### `Storage.saveMediTrackData(ReadOnlyMediTrack data)`
-* **Description:** Serializes the current state of the application (inventory, roster, and password hash) and saves it to the local JSON file. Called automatically by the Logic layer after every state-changing command.
+* **Description:** Serializes the current state of the application (inventory, roster, and password hash) and saves 
+it to the local JSON file. Called automatically by the Logic layer after every state-changing command.
 * **Parameters / inputs:** 
   * `data` (ReadOnlyMediTrack): A read-only snapshot of the current Model data.
 * **Return values:** `void` (Throws `IOException` if the file cannot be written).
-* **Example usage:** `storage.saveMediTrackData(model.getMediTrack());`
+* **Example usage:** 
+```java
+storage.saveMediTrackData(model.getMediTrack());
+```
 
 ---
 
 ## 5. PasswordManager API
 
-The PasswordManager is a stateless utility component dedicated solely to application security, ensuring that sensitive credentials are not processed directly by general logic classes. It does not store the password itself — it only provides methods to hash and verify it.
+The PasswordManager is a stateless utility component dedicated solely to application security, ensuring that sensitive 
+credentials are not processed directly by general logic classes. It does not store the password itself — it only 
+provides methods to hash and verify it.
 
 ### `PasswordManager.hashPassword(String plainText)`
-* **Description:** Takes a plain-text password and returns a BCrypt hash string suitable for storage. Uses a BCrypt cost factor of 12. Called once when the user sets their password on first launch. The plain-text password is never stored or logged.
+* **Description:** Takes a plain-text password and returns a BCrypt hash string suitable for storage. Uses a BCrypt 
+cost factor of 12. Called once when the user sets their password on first launch. The plain-text password is never 
+stored or logged.
 * **Parameters / inputs:**
   * `plainText` (String): The plain-text password entered by the user during the first-launch setup screen.
 * **Return values:** `String` - A BCrypt hash string.
-* * **Example usage:** `String hash = PasswordManager.hashPassword("mySecurePassword");`
+* * **Example usage:** 
+```java
+String hash = PasswordManager.hashPassword("mySecurePassword");
+```
 
 ### `PasswordManager.checkPassword(String plainTextPassword, String storedHash)`
-* **Description:** Compares the plain text password entered by the user at launch against the BCrypt hash stored in the local data file. The plain-text password is never stored or logged.
+* **Description:** Compares the plain text password entered by the user at launch against the BCrypt hash stored in 
+the local data file. The plain-text password is never stored or logged.
 * **Parameters:** 
   * `plainTextPassword` (String): The password entered in the UI.
   * `storedHash` (String): The BCrypt hash retrieved from Storage.
 * **Return values:** `boolean` - Returns `true` if the password matches the hash, `false` otherwise.
-* **Example usage:** `boolean isAuth = PasswordManager.checkPassword(inputPassword, savedHash);`
+* **Example usage:** 
+```java
+boolean isAuth = PasswordManager.checkPassword(inputPassword, savedHash);
+```
