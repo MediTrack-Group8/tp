@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'meditrack'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+javafx {
+    version = "21"
+    modules = [
+            'javafx.controls',
+            'javafx.fxml',
+            'javafx.graphics'   // explicitly included — required for Stage, Scene, layout nodes
+    ]
+}
+
+application {
+    mainClass = 'meditrack.Launcher'   // use Launcher, not Main, to avoid JavaFX module issues
+}
+
+dependencies {
+    // Jackson for JSON Storage serialization
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
+
+    // jBcrypt for password hashing
+    implementation 'org.mindrot:jbcrypt:0.4'
+
+    // JUnit 5 for testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+}
+
+test {
+    useJUnitPlatform()
+}
