@@ -1,5 +1,7 @@
 package meditrack.model;
+
 import javafx.collections.ObservableList;
+
 /**
  * Unmodifiable view of the MediTrack data.
  */

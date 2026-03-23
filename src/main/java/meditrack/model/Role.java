@@ -1,4 +1,5 @@
 package meditrack.model;
+
 /**
  * Represents the roles available in the MediTrack system.
  */

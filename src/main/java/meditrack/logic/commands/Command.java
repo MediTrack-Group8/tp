@@ -1,10 +1,13 @@
 package meditrack.logic.commands;
+
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.Model;
+
 /**
  * Represents a command with hidden internal logic and the ability to be executed.
  */
 public abstract class Command {
+
     /**
      * Executes the command and returns the result message.
      *
