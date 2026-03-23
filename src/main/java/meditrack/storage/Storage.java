@@ -2,9 +2,7 @@ package meditrack.storage;
 
 import java.io.IOException;
 import java.util.Optional;
-
 import meditrack.model.ReadOnlyMediTrack;
-
 /**
  * API of the Storage component.
  * Defines the contract for reading from and writing to the local hard drive.

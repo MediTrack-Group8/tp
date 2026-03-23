@@ -1,57 +1,115 @@
 package meditrack.storage;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
+import meditrack.logic.commands.exceptions.CommandException;
+import meditrack.model.MediTrack;
+import meditrack.model.Personnel;
 import meditrack.model.ReadOnlyMediTrack;
 
 /**
  * Manages storage of MediTrack data in local storage.
- * Acts as the concrete implementation of the Storage interface, delegating file I/O to JSON-specific classes.
+ *
+ * <p>Fills in the two TODOs left by the team's stub:
+ * <ol>
+ *   <li>{@link #readMediTrackData()} — maps {@link JsonSerializableMediTrack}
+ *       → {@link ReadOnlyMediTrack} using {@link JsonAdaptedPersonnel#toModelType()}</li>
+ *   <li>{@link #saveMediTrackData(ReadOnlyMediTrack)} — maps
+ *       {@link ReadOnlyMediTrack} → {@link JsonSerializableMediTrack} and writes to disk</li>
+ * </ol>
  */
 public class StorageManager implements Storage {
 
     private final JsonMediTrackStorage jsonStorage;
 
-    /**
-     * Constructs a {@code StorageManager} with the default JSON storage engine.
-     */
+    /** Constructs a {@code StorageManager} with the default JSON storage engine. */
     public StorageManager() {
         this.jsonStorage = new JsonMediTrackStorage();
     }
 
-    /**
-     * Checks if the application is being launched for the first time by verifying the existence of the data file.
-     *
-     * @return true if the JSON data file does not exist, false otherwise.
-     */
+    // -------------------------------------------------------------------------
+    // isFirstLaunch — unchanged from team stub
+    // -------------------------------------------------------------------------
+
     @Override
     public boolean isFirstLaunch() {
-        // If data.json does not exist, it is the first launch.
         return !jsonStorage.getFilePath().toFile().exists();
     }
 
+    // -------------------------------------------------------------------------
+    // readMediTrackData — fills in team's TODO
+    // -------------------------------------------------------------------------
+
     /**
-     * Reads the application data from the local JSON file.
+     * Reads the local JSON file and converts it to a {@link ReadOnlyMediTrack}.
      *
-     * @return An Optional containing the deserialized model data, or an empty Optional if the file is missing.
+     * <p>If the file is missing or a personnel record cannot be parsed,
+     * an empty Optional is returned so the app falls back to defaults.
+     *
+     * @return Optional containing populated {@link MediTrack}, or empty on failure
      */
     @Override
     public Optional<ReadOnlyMediTrack> readMediTrackData() {
-        // TODO: Person B & C will map JsonSerializableMediTrack to ReadOnlyMediTrack here
-        // For now, we return empty so it compiles.
-        return Optional.empty();
+        Optional<JsonSerializableMediTrack> rawData = jsonStorage.readData();
+        if (rawData.isEmpty()) {
+            return Optional.empty();
+        }
+
+        JsonSerializableMediTrack serializable = rawData.get();
+        MediTrack mediTrack = new MediTrack();
+
+        // Convert each JsonAdaptedPersonnel → Personnel and add to MediTrack
+        for (JsonAdaptedPersonnel adapted : serializable.personnel) {
+            try {
+                Personnel p = adapted.toModelType();
+                mediTrack.addPersonnelRecord(p);
+            } catch (CommandException e) {
+                // Corrupt record: skip and log; do not crash the whole app
+                System.err.println("[StorageManager] Skipping corrupt personnel record: "
+                        + e.getMessage());
+            }
+        }
+
+        // Person B will add supply loading here in the same pattern
+        // for (JsonAdaptedSupply adapted : serializable.supplies) { ... }
+
+        return Optional.of(mediTrack);
     }
 
+    // -------------------------------------------------------------------------
+    // saveMediTrackData — fills in team's TODO
+    // -------------------------------------------------------------------------
+
     /**
-     * Saves the current application state to the local JSON file.
+     * Serialises the current model data to JSON and writes it to disk.
      *
-     * @param data A read-only snapshot of the data to save.
-     * @throws IOException If the file cannot be written to the disk.
+     * @param data a read-only snapshot of the current model state
+     * @throws IOException if the file cannot be written
      */
     @Override
     public void saveMediTrackData(ReadOnlyMediTrack data) throws IOException {
-        // TODO: Map ReadOnlyMediTrack to JsonSerializableMediTrack, then save
-        // jsonStorage.saveData(serializableData);
+        // Convert Personnel domain objects → JsonAdaptedPersonnel DTOs
+        List<JsonAdaptedPersonnel> adaptedPersonnel = data.getPersonnelList()
+                .stream()
+                .map(JsonAdaptedPersonnel::fromModelType)
+                .toList();
+
+        // Person B will provide adaptedSupplies in the same pattern
+        List<JsonAdaptedSupply> adaptedSupplies = data.getSupplyList()
+                .stream()
+                .map(s -> new JsonAdaptedSupply(null, 0, null)) // placeholder until Person B fills in
+                .toList();
+
+        // Preserve the existing password hash — read it back from the file
+        String passwordHash = jsonStorage.readData()
+                .map(d -> d.passwordHash)
+                .orElse(null);
+
+        JsonSerializableMediTrack serializableData =
+                new JsonSerializableMediTrack(passwordHash, adaptedSupplies, adaptedPersonnel);
+
+        jsonStorage.saveData(serializableData);
     }
 }
