@@ -97,8 +97,9 @@ public class MainAppScreen extends HBox {
                 break;
             case DUTY_ROSTER:
                 if (dutyRosterScreen == null) {
-                    dutyRosterScreen = new DutyRosterScreen(model);
+                    dutyRosterScreen = new DutyRosterScreen(model, storage);
                 }
+                dutyRosterScreen.refresh();
                 contentArea.getChildren().add(dutyRosterScreen);
                 break;
             case MEDICAL_ATTENTION:
