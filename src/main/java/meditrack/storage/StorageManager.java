@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import meditrack.logic.commands.exceptions.CommandException;
+import meditrack.model.DutySlot;
 import meditrack.model.MediTrack;
 import meditrack.model.Personnel;
 import meditrack.model.ReadOnlyMediTrack;
@@ -57,6 +58,15 @@ public class StorageManager implements Storage {
             }
         }
 
+        for (JsonAdaptedDutySlot adapted : serializable.dutySlots) {
+            try {
+                mediTrack.addDutySlotRecord(adapted.toModelType());
+            } catch (CommandException e) {
+                System.err.println("[StorageManager] Skipping corrupt duty slot record: "
+                        + e.getMessage());
+            }
+        }
+
         return Optional.of(mediTrack);
     }
 
@@ -73,12 +83,18 @@ public class StorageManager implements Storage {
                 .map(JsonAdaptedSupply::fromModelType)
                 .toList();
 
+        List<JsonAdaptedDutySlot> adaptedDutySlots = data.getDutySlots()
+                .stream()
+                .map(JsonAdaptedDutySlot::fromModelType)
+                .toList();
+
         String passwordHash = jsonStorage.readData()
                 .map(d -> d.passwordHash)
                 .orElse(null);
 
         JsonSerializableMediTrack serializableData =
-                new JsonSerializableMediTrack(passwordHash, adaptedSupplies, adaptedPersonnel);
+                new JsonSerializableMediTrack(passwordHash, adaptedSupplies,
+                        adaptedPersonnel, adaptedDutySlots);
 
         jsonStorage.saveData(serializableData);
     }

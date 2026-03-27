@@ -83,7 +83,7 @@ public class FirstLaunchScreen extends VBox {
             String hash = PasswordManager.hashPassword(plainTextPassword);
 
             // Create the initial empty database with the new password hash
-            JsonSerializableMediTrack initialData = new JsonSerializableMediTrack(hash, null, null);
+            JsonSerializableMediTrack initialData = new JsonSerializableMediTrack(hash, null, null, null);
             storageEngine.saveData(initialData);
 
             // Trigger the callback to switch to the Login screen

@@ -1,5 +1,9 @@
 package meditrack.model;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -14,6 +18,7 @@ public class MediTrack implements ReadOnlyMediTrack {
 
     private final ObservableList<Supply> supplies = FXCollections.observableArrayList();
     final ObservableList<Personnel> personnel = FXCollections.observableArrayList();
+    private final List<DutySlot> dutySlots = new ArrayList<>();
 
     /**
      * Appends a {@link Personnel} record directly to the internal list.
@@ -74,5 +79,23 @@ public class MediTrack implements ReadOnlyMediTrack {
     /** Appends a supply without duplicate check — used by StorageManager when loading from disk. */
     public void addSupplyRecord(Supply s) {
         supplies.add(s);
+    }
+
+    // ── Duty slots ────────────────────────────────────────────────────────────
+
+    /** Unmodifiable view of scheduled duty slots. */
+    @Override
+    public List<DutySlot> getDutySlots() {
+        return Collections.unmodifiableList(dutySlots);
+    }
+
+    /** Internal mutable list — only ModelManager should call this. */
+    List<DutySlot> getDutySlotsInternal() {
+        return dutySlots;
+    }
+
+    /** Appends a duty slot record — used by StorageManager when loading from disk. */
+    public void addDutySlotRecord(DutySlot slot) {
+        dutySlots.add(slot);
     }
 }

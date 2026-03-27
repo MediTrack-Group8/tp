@@ -1,5 +1,6 @@
 package meditrack.storage;
 
+import meditrack.model.DutySlot;
 import meditrack.model.Personnel;
 import meditrack.model.ReadOnlyMediTrack;
 import meditrack.model.Role;
@@ -53,6 +54,20 @@ public class CsvExportUtility {
                         flag = "⚠ MEDICAL ATTENTION";
                     }
                     writer.append(String.format("\"%s\",\"%s\",\"%s\"\n", p.getName(), s.toString(), flag));
+                }
+                writer.append("\n");
+            }
+
+            // --- Export Duty Roster (Platoon Commander ONLY) ---
+            if (currentRole == Role.PLATOON_COMMANDER) {
+                writer.append("=== DUTY ROSTER ===\n");
+                writer.append("Time Slot,Duty Type,Personnel\n");
+
+                for (DutySlot slot : data.getDutySlots()) {
+                    writer.append(String.format("\"%s\",\"%s\",\"%s\"\n",
+                            slot.getTimeSlotDisplay(),
+                            slot.getDutyType().toString(),
+                            slot.getPersonnelName()));
                 }
                 writer.append("\n");
             }

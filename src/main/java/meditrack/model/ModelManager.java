@@ -184,4 +184,43 @@ public class ModelManager implements Model {
     private ObservableList<Personnel> getInternalPersonnelList() {
         return mediTrack.getPersonnelObservable();
     }
+
+    // ── Duty slot management ──────────────────────────────────────────────────
+
+    @Override
+    public List<DutySlot> getDutySlots() {
+        return mediTrack.getDutySlots();
+    }
+
+    @Override
+    public void addDutySlot(DutySlot slot) {
+        mediTrack.getDutySlotsInternal().add(slot);
+    }
+
+    @Override
+    public void removeDutySlot(int zeroBasedIndex) throws CommandException {
+        List<DutySlot> slots = mediTrack.getDutySlotsInternal();
+        if (zeroBasedIndex < 0 || zeroBasedIndex >= slots.size()) {
+            throw new CommandException(
+                    String.format("Index %d is out of bounds. The roster has %d slot(s).",
+                            zeroBasedIndex, slots.size()));
+        }
+        slots.remove(zeroBasedIndex);
+    }
+
+    @Override
+    public void clearDutySlots() {
+        mediTrack.getDutySlotsInternal().clear();
+    }
+
+    @Override
+    public void replaceDutySlot(int zeroBasedIndex, DutySlot newSlot) throws CommandException {
+        List<DutySlot> slots = mediTrack.getDutySlotsInternal();
+        if (zeroBasedIndex < 0 || zeroBasedIndex >= slots.size()) {
+            throw new CommandException(
+                    String.format("Index %d is out of bounds. The roster has %d slot(s).",
+                            zeroBasedIndex, slots.size()));
+        }
+        slots.set(zeroBasedIndex, newSlot);
+    }
 }

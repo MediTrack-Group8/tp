@@ -92,4 +92,35 @@ public interface Model {
      * Returns the total number of personnel in the roster.
      */
     int getPersonnelCount();
+
+    // ── Duty slot management ──────────────────────────────────────────────────
+
+    /**
+     * Returns an unmodifiable snapshot of scheduled duty slots.
+     */
+    List<DutySlot> getDutySlots();
+
+    /**
+     * Appends a duty slot to the schedule and persists the change.
+     */
+    void addDutySlot(DutySlot slot);
+
+    /**
+     * Removes the duty slot at the given zero-based index.
+     *
+     * @throws CommandException if the index is out of bounds
+     */
+    void removeDutySlot(int zeroBasedIndex) throws CommandException;
+
+    /**
+     * Removes all scheduled duty slots.
+     */
+    void clearDutySlots();
+
+    /**
+     * Replaces the duty slot at {@code zeroBasedIndex} with {@code newSlot}.
+     *
+     * @throws CommandException if the index is out of bounds
+     */
+    void replaceDutySlot(int zeroBasedIndex, DutySlot newSlot) throws CommandException;
 }
