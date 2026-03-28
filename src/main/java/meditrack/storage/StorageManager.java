@@ -17,6 +17,9 @@ public class StorageManager implements Storage {
 
     private final JsonMediTrackStorage jsonStorage;
 
+    /** Cached password hash so saves never need to re-read the file. */
+    private String cachedPasswordHash;
+
     /** Creates a storage manager using the default JSON file path. */
     public StorageManager() {
         this.jsonStorage = new JsonMediTrackStorage();
@@ -37,6 +40,8 @@ public class StorageManager implements Storage {
         }
 
         JsonSerializableMediTrack serializable = rawData.get();
+        cachedPasswordHash = serializable.passwordHash;
+
         MediTrack mediTrack = new MediTrack();
 
         for (JsonAdaptedPersonnel adapted : serializable.personnel) {
@@ -77,7 +82,6 @@ public class StorageManager implements Storage {
                 .stream()
                 .map(JsonAdaptedPersonnel::fromModelType)
                 .toList();
-
         List<JsonAdaptedSupply> adaptedSupplies = data.getSupplyList()
                 .stream()
                 .map(JsonAdaptedSupply::fromModelType)
@@ -88,12 +92,14 @@ public class StorageManager implements Storage {
                 .map(JsonAdaptedDutySlot::fromModelType)
                 .toList();
 
-        String passwordHash = jsonStorage.readData()
-                .map(d -> d.passwordHash)
-                .orElse(null);
+        if (cachedPasswordHash == null) {
+            cachedPasswordHash = jsonStorage.readData()
+                    .map(d -> d.passwordHash)
+                    .orElse(null);
+        }
 
         JsonSerializableMediTrack serializableData =
-                new JsonSerializableMediTrack(passwordHash, adaptedSupplies,
+                new JsonSerializableMediTrack(cachedPasswordHash, adaptedSupplies,
                         adaptedPersonnel, adaptedDutySlots);
 
         jsonStorage.saveData(serializableData);

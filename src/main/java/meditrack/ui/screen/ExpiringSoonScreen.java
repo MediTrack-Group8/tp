@@ -118,7 +118,7 @@ public class ExpiringSoonScreen extends VBox {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setFixedCellSize(50);
         table.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: transparent;"
-                + " -fx-table-cell-border-color: " + OUTLINE_VAR + "/20;"
+                + " -fx-table-cell-border-color: rgba(69,72,60,0.2);"
                 + " -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
         table.setPlaceholder(emptyPlaceholder());
 

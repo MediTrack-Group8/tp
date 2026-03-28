@@ -14,10 +14,10 @@ public class JsonAdaptedPersonnel {
 
     public static final String MISSING_FIELD_MSG = "Personnel's %s field is missing.";
 
-    private final String name;
-    private final String status;
-    private final String bloodGroup;
-    private final String allergies;
+    public final String name;
+    public final String status;
+    public final String bloodGroup;
+    public final String allergies;
 
     /** Jackson calls this when loading the file. */
     @JsonCreator

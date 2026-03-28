@@ -198,7 +198,7 @@ public class PersonnelScreen extends VBox {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setFixedCellSize(50);
         table.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: transparent;"
-                + " -fx-table-cell-border-color: " + OUTLINE_VAR + "/20;"
+                + " -fx-table-cell-border-color: rgba(69,72,60,0.2);"
                 + " -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
         table.setPlaceholder(buildEmptyPlaceholder());
 
@@ -389,8 +389,8 @@ public class PersonnelScreen extends VBox {
                     badge.setText(v.toUpperCase().replace("_", " "));
                     badge.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                             + " -fx-font-family: 'Consolas', monospace;"
-                            + " -fx-border-color: " + color + "/40; -fx-border-width: 1;"
-                            + " -fx-background-color: " + color + "/08;");
+                            + " -fx-border-color: " + color + "; -fx-border-width: 1;"
+                            + " -fx-background-color: transparent;");
                     setGraphic(badge);
                     setStyle("-fx-background-color: transparent;");
                 }

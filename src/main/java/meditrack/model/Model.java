@@ -79,11 +79,6 @@ public interface Model {
     ObservableList<Personnel> getPersonnelList();
 
     /**
-     * Generates a randomised duty roster from FIT personnel.
-     */
-    List<Personnel> generateRoster() throws CommandException;
-
-    /**
      * Returns the total number of personnel in the roster.
      */
     int getPersonnelCount();

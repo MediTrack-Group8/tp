@@ -16,11 +16,11 @@ public class JsonAdaptedDutySlot {
 
     public static final String MISSING_FIELD_MSG = "DutySlot's %s field is missing.";
 
-    private final String date;
-    private final String startTime;
-    private final String endTime;
-    private final String dutyType;
-    private final String personnelName;
+    public final String date;
+    public final String startTime;
+    public final String endTime;
+    public final String dutyType;
+    public final String personnelName;
 
     @JsonCreator
     public JsonAdaptedDutySlot(@JsonProperty("date") String date,

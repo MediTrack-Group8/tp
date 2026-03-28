@@ -33,11 +33,18 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.Scene;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import meditrack.logic.RosterAutoGenerator;
+import meditrack.ui.modal.AddSlotModal;
+import meditrack.ui.modal.AutoGenerateModal;
+import meditrack.ui.modal.EditSupplyModal;
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.DutySlot;
 import meditrack.model.DutyType;
@@ -79,8 +86,6 @@ public class DutyRosterScreen extends VBox {
 
     private Label dateLabel;
     private final TableView<DutySlot> table = new TableView<>();
-    private Label slotCountLabel;
-    private Label gapWarningLabel;
     private Label summaryLabel;
 
     /**
@@ -184,7 +189,7 @@ public class DutyRosterScreen extends VBox {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setFixedCellSize(50);
         table.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: transparent;"
-                + " -fx-table-cell-border-color: " + OUTLINE_VAR + "/20;"
+                + " -fx-table-cell-border-color: rgba(69,72,60,0.2);"
                 + " -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
         table.setPlaceholder(buildEmptyPlaceholder());
 
@@ -310,8 +315,8 @@ public class DutyRosterScreen extends VBox {
                 badge.setText(v.replace("_", " "));
                 badge.setStyle("-fx-text-fill: " + WARNING + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                         + " -fx-font-family: 'Consolas', monospace;"
-                        + " -fx-border-color: " + WARNING + "/40; -fx-border-width: 1;"
-                        + " -fx-background-color: " + WARNING + "/08;");
+                        + " -fx-border-color: " + WARNING + "; -fx-border-width: 1;"
+                        + " -fx-background-color: transparent;");
                 setGraphic(badge);
                 setStyle("-fx-background-color: transparent;");
             }
@@ -404,16 +409,6 @@ public class DutyRosterScreen extends VBox {
         footer.setMinHeight(44);
         footer.setStyle("-fx-background-color: " + SURFACE_HIGHEST + ";");
 
-        slotCountLabel = new Label("0 SLOTS");
-        slotCountLabel.setStyle("-fx-text-fill: " + SECONDARY + "; -fx-font-size: 10px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', monospace;");
-
-        gapWarningLabel = new Label();
-        gapWarningLabel.setStyle("-fx-text-fill: " + WARNING + "; -fx-font-size: 10px;"
-                + " -fx-font-family: 'Consolas', monospace;");
-        gapWarningLabel.setVisible(false);
-        gapWarningLabel.setManaged(false);
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -433,7 +428,7 @@ public class DutyRosterScreen extends VBox {
         clearDayBtn.setOnMouseExited(e -> clearDayBtn.setStyle(clearBase));
         clearDayBtn.setOnAction(e -> handleClearDay());
 
-        footer.getChildren().addAll(slotCountLabel, gapWarningLabel, spacer, clearDayBtn);
+        footer.getChildren().addAll(spacer, clearDayBtn);
         return footer;
     }
 
@@ -447,98 +442,11 @@ public class DutyRosterScreen extends VBox {
             return;
         }
 
-        TextField startField = new TextField();
-        startField.setPromptText("HH:mm");
-        TextField endField = new TextField();
-        endField.setPromptText("HH:mm");
-
-        ComboBox<DutyType> typeCombo = new ComboBox<>(FXCollections.observableArrayList(DutyType.values()));
-        typeCombo.setPromptText("Select duty type");
-        typeCombo.setPrefWidth(200);
-
-        ComboBox<String> nameCombo = new ComboBox<>(FXCollections.observableArrayList(fitNames));
-        nameCombo.setPromptText("Select personnel");
-        nameCombo.setPrefWidth(200);
-
-        Label dateInfo = new Label("Date: " + selectedDate.format(DATE_DISPLAY_FMT));
-        dateInfo.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
-
-        Label errLabel = new Label();
-        errLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-size: 11px;");
-        errLabel.setVisible(false);
-        errLabel.setManaged(false);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(16, 24, 8, 24));
-        grid.add(dateInfo, 0, 0, 2, 1);
-        grid.add(new Label("Start time:"), 0, 1);
-        grid.add(startField, 1, 1);
-        grid.add(new Label("End time:"), 0, 2);
-        grid.add(endField, 1, 2);
-        grid.add(new Label("Duty type:"), 0, 3);
-        grid.add(typeCombo, 1, 3);
-        grid.add(new Label("Personnel:"), 0, 4);
-        grid.add(nameCombo, 1, 4);
-        grid.add(errLabel, 0, 5, 2, 1);
-
-        ColumnConstraints c1 = new ColumnConstraints();
-        c1.setMinWidth(80);
-        ColumnConstraints c2 = new ColumnConstraints();
-        c2.setMinWidth(200);
-        c2.setHgrow(Priority.ALWAYS);
-        grid.getColumnConstraints().addAll(c1, c2);
-
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Add Duty Slot");
-        dialog.setHeaderText("Add a slot for " + selectedDate.format(DATE_DISPLAY_FMT));
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        okBtn.setText("Add Slot");
-        okBtn.addEventFilter(javafx.event.ActionEvent.ACTION, ev -> {
-            try {
-                LocalTime.parse(startField.getText().trim());
-            } catch (DateTimeParseException e) {
-                showDialogError(errLabel, "Invalid start time — use HH:mm.");
-                ev.consume();
-                return;
-            }
-            try {
-                LocalTime.parse(endField.getText().trim());
-            } catch (DateTimeParseException e) {
-                showDialogError(errLabel, "Invalid end time — use HH:mm.");
-                ev.consume();
-                return;
-            }
-            if (typeCombo.getValue() == null) {
-                showDialogError(errLabel, "Please select a duty type.");
-                ev.consume();
-                return;
-            }
-            if (nameCombo.getValue() == null || nameCombo.getValue().isBlank()) {
-                showDialogError(errLabel, "Please select a personnel member.");
-                ev.consume();
-            }
-        });
-
-        dialog.showAndWait().ifPresent(btn -> {
-            if (btn != ButtonType.OK) {
-                return;
-            }
-            try {
-                LocalTime start = LocalTime.parse(startField.getText().trim());
-                LocalTime end = LocalTime.parse(endField.getText().trim());
-                model.addDutySlot(new DutySlot(selectedDate, start, end,
-                        typeCombo.getValue(), nameCombo.getValue()));
-                lastGenerateResult = null;
-                persist();
-                refreshTable();
-            } catch (DateTimeParseException ignored) {
-                // Already validated by OK button event filter; should not reach here
-            }
+        AddSlotModal.show(selectedDate, fitNames, getScene().getWindow(), slot -> {
+            model.addDutySlot(slot);
+            lastGenerateResult = null;
+            persist();
+            refreshTable();
         });
     }
 
@@ -642,19 +550,111 @@ public class DutyRosterScreen extends VBox {
         if (count == 0) {
             return;
         }
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Remove all " + count + " slot(s) on " + selectedDate.format(DATE_DISPLAY_FMT) + "?",
-                ButtonType.YES, ButtonType.NO);
-        confirm.setTitle("Clear Day");
-        confirm.setHeaderText(null);
-        confirm.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.YES) {
-                model.clearDutySlotsForDate(selectedDate);
-                lastGenerateResult = null;
-                persist();
-                refreshTable();
-            }
+
+        Stage stage = new Stage();
+        stage.initStyle(StageStyle.UNDECORATED);
+        stage.initModality(Modality.WINDOW_MODAL);
+        stage.initOwner(getScene().getWindow());
+
+        // Title bar
+        HBox titleBar = new HBox(10);
+        titleBar.setAlignment(Pos.CENTER_LEFT);
+        titleBar.setPadding(new Insets(0, 8, 0, 14));
+        titleBar.setPrefHeight(40);
+        titleBar.setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-border-color: rgba(69,72,60,0.2);"
+                + " -fx-border-width: 0 0 1 0;");
+
+        Region iconBox = new Region();
+        iconBox.setMinSize(16, 16);
+        iconBox.setMaxSize(16, 16);
+        iconBox.setStyle("-fx-background-color: " + ERROR + ";");
+
+        Label titleLbl = new Label("CLEAR DAY");
+        titleLbl.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 11px; -fx-font-weight: bold;"
+                + " -fx-font-family: 'Consolas', monospace;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        titleBar.getChildren().addAll(iconBox, titleLbl, spacer, EditSupplyModal.windowCloseBtn(stage));
+
+        final double[] drag = {0, 0};
+        titleBar.setOnMousePressed(e -> {
+            drag[0] = stage.getX() - e.getScreenX();
+            drag[1] = stage.getY() - e.getScreenY();
         });
+        titleBar.setOnMouseDragged(e -> {
+            stage.setX(e.getScreenX() + drag[0]);
+            stage.setY(e.getScreenY() + drag[1]);
+        });
+
+        // Body
+        VBox body = new VBox(20);
+        body.setPadding(new Insets(32, 36, 28, 36));
+        body.setStyle("-fx-background-color: " + SURFACE_LOW + ";");
+
+        Label dateLbl = new Label(selectedDate.format(DATE_DISPLAY_FMT));
+        dateLbl.setStyle("-fx-text-fill: " + ON_SURFACE + "; -fx-font-size: 16px; -fx-font-weight: bold;"
+                + " -fx-font-family: 'Consolas', monospace;");
+
+        Label countLbl = new Label(count + " SLOT" + (count == 1 ? "" : "S") + " SCHEDULED");
+        countLbl.setStyle("-fx-text-fill: " + SECONDARY + "; -fx-font-size: 10px;"
+                + " -fx-font-family: 'Consolas', monospace;");
+
+        VBox infoCard = new VBox(8, dateLbl, countLbl);
+        infoCard.setPadding(new Insets(16));
+        infoCard.setStyle("-fx-background-color: " + SURFACE + ";"
+                + " -fx-border-color: " + ERROR + "; -fx-border-width: 0 0 0 3;");
+
+        HBox warnBar = new HBox(10);
+        warnBar.setAlignment(Pos.CENTER_LEFT);
+        warnBar.setPadding(new Insets(12, 16, 12, 14));
+        warnBar.setStyle("-fx-background-color: rgba(147,0,10,0.12);"
+                + " -fx-border-color: " + ERROR + "; -fx-border-width: 0 0 0 2;");
+        Label warnText = new Label("All duty slots for this date will be permanently removed.");
+        warnText.setWrapText(true);
+        warnText.setStyle("-fx-text-fill: rgba(255,180,171,0.75); -fx-font-size: 9px;"
+                + " -fx-font-family: 'Consolas', monospace;");
+        warnBar.getChildren().add(warnText);
+
+        body.getChildren().addAll(infoCard, warnBar);
+
+        // Footer
+        HBox footer = new HBox(12);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setPadding(new Insets(14, 20, 14, 20));
+        footer.setStyle("-fx-background-color: rgba(41,43,38,0.5); -fx-border-color: rgba(69,72,60,0.1);"
+                + " -fx-border-width: 1 0 0 0;");
+
+        String delBase = "-fx-background-color: #93000a; -fx-text-fill: " + ERROR + ";"
+                + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
+                + " -fx-cursor: hand; -fx-background-radius: 0;";
+        String delHover = "-fx-background-color: " + ERROR + "; -fx-text-fill: #1a0000;"
+                + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
+                + " -fx-cursor: hand; -fx-background-radius: 0;";
+        Button confirmBtn = new Button("CONFIRM CLEAR  \u2192");
+        confirmBtn.setPrefHeight(44);
+        confirmBtn.setPadding(new Insets(0, 24, 0, 24));
+        confirmBtn.setStyle(delBase);
+        confirmBtn.setOnMouseEntered(e -> confirmBtn.setStyle(delHover));
+        confirmBtn.setOnMouseExited(e -> confirmBtn.setStyle(delBase));
+        confirmBtn.setOnAction(e -> {
+            model.clearDutySlotsForDate(selectedDate);
+            lastGenerateResult = null;
+            persist();
+            refreshTable();
+            stage.close();
+        });
+
+        footer.getChildren().addAll(EditSupplyModal.cancelButton(stage), confirmBtn);
+
+        VBox root = new VBox(0, titleBar, body, footer);
+        root.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: rgba(143,146,132,0.2);"
+                + " -fx-border-width: 1;");
+
+        Scene scene = new Scene(root, 440, 300);
+        stage.setScene(scene);
+        stage.setOnShown(ev -> EditSupplyModal.centre(stage, getScene().getWindow()));
+        stage.showAndWait();
     }
 
     // Auto-generate dialog
@@ -666,96 +666,8 @@ public class DutyRosterScreen extends VBox {
             return;
         }
 
-        DutyType[] allTypes = DutyType.values();
-
-        List<CheckBox> typeBoxes = new ArrayList<>();
-        for (DutyType type : allTypes) {
-            CheckBox cb = new CheckBox(type.toString());
-            cb.setSelected(type == DutyType.GUARD_DUTY || type == DutyType.MEDICAL_COVER);
-            typeBoxes.add(cb);
-        }
-
-        // Duration field per duty type (pre-filled with defaults)
-        Map<DutyType, TextField> durationFields = new LinkedHashMap<>();
-        for (DutyType type : allTypes) {
-            TextField tf = new TextField(
-                    String.valueOf(RosterAutoGenerator.DEFAULT_DURATIONS.getOrDefault(type, 120)));
-            tf.setPrefWidth(70);
-            durationFields.put(type, tf);
-        }
-
-        Label fitNote = new Label("FIT personnel: " + fitPersonnel.size()
-                + "   |   Date: " + selectedDate.format(DATE_DISPLAY_FMT));
-        fitNote.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
-
-        Label coverageNote = new Label(
-                "Guard Duty & Patrol: 00:00\u201300:00 (24 h window)\n"
-                + "All other types:     08:00\u201320:00 (12 h window)");
-        coverageNote.setStyle("-fx-text-fill: #6c757d; -fx-font-size: 11px;");
-
-        GridPane durationGrid = new GridPane();
-        durationGrid.setHgap(12);
-        durationGrid.setVgap(6);
-        for (int i = 0; i < allTypes.length; i++) {
-            durationGrid.add(new Label(allTypes[i].toString()), 0, i);
-            durationGrid.add(durationFields.get(allTypes[i]), 1, i);
-        }
-
-        Label errLabel = new Label();
-        errLabel.setStyle("-fx-text-fill: #dc3545; -fx-font-size: 11px;");
-        errLabel.setVisible(false);
-        errLabel.setManaged(false);
-
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(16, 24, 8, 24));
-        content.getChildren().addAll(fitNote, new Label("Duty types to schedule:"));
-        content.getChildren().addAll(typeBoxes);
-        content.getChildren().add(new Separator());
-        content.getChildren().addAll(
-                new Label("Slot duration (minutes) per duty type:"), durationGrid);
-        content.getChildren().add(new Separator());
-        content.getChildren().addAll(coverageNote, errLabel);
-
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Auto-Generate Duty Roster");
-        dialog.setHeaderText("Generate duty slots for " + selectedDate.format(DATE_DISPLAY_FMT));
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        dialog.getDialogPane().setPrefWidth(420);
-
-        Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        okBtn.setText("Generate");
-        okBtn.addEventFilter(javafx.event.ActionEvent.ACTION, ev -> {
-            boolean anySelected = typeBoxes.stream().anyMatch(CheckBox::isSelected);
-            if (!anySelected) {
-                showDialogError(errLabel, "Select at least one duty type.");
-                ev.consume();
-            }
-        });
-
-        dialog.showAndWait().ifPresent(btn -> {
-            if (btn != ButtonType.OK) {
-                return;
-            }
-
-            List<DutyType> selected = new ArrayList<>();
-            for (int i = 0; i < allTypes.length; i++) {
-                if (typeBoxes.get(i).isSelected()) {
-                    selected.add(allTypes[i]);
-                }
-            }
-
-            Map<DutyType, Integer> durations = new HashMap<>();
-            for (DutyType type : allTypes) {
-                try {
-                    int val = Integer.parseInt(durationFields.get(type).getText().trim());
-                    durations.put(type, Math.max(15, val));
-                } catch (NumberFormatException e) {
-                    durations.put(type, RosterAutoGenerator.DEFAULT_DURATIONS.getOrDefault(type, 120));
-                }
-            }
-
-            // Cumulative duty counts across all stored slots for fair rotation
+        AutoGenerateModal.show(selectedDate, fitPersonnel.size(),
+                getScene().getWindow(), config -> {
             Map<String, Integer> existingCounts = new HashMap<>();
             for (DutySlot slot : model.getDutySlots()) {
                 existingCounts.merge(slot.getPersonnelName(), 1, Integer::sum);
@@ -763,7 +675,8 @@ public class DutyRosterScreen extends VBox {
 
             List<String> names = fitPersonnel.stream().map(Personnel::getName).toList();
             RosterAutoGenerator.GenerateResult result = RosterAutoGenerator.generate(
-                    names, selected, selectedDate, durations, existingCounts);
+                    names, config.selectedTypes(), selectedDate,
+                    config.durations(), existingCounts);
 
             model.clearDutySlotsForDate(selectedDate);
             for (DutySlot slot : result.slots()) {
@@ -785,13 +698,7 @@ public class DutyRosterScreen extends VBox {
 
         table.setItems(FXCollections.observableArrayList(filtered));
 
-        int count = filtered.size();
-        if (slotCountLabel != null) {
-            slotCountLabel.setText(count + " SLOT" + (count == 1 ? "" : "S"));
-        }
-
         refreshSummary(filtered);
-        updateGapWarning();
     }
 
     private void refreshSummary(List<DutySlot> filtered) {
@@ -810,21 +717,6 @@ public class DutyRosterScreen extends VBox {
                 .map(e -> e.getKey().toUpperCase() + " " + formatMinutes(e.getValue()))
                 .collect(Collectors.joining("   "));
         summaryLabel.setText(summary);
-    }
-
-    private void updateGapWarning() {
-        if (gapWarningLabel == null) {
-            return;
-        }
-        if (lastGenerateResult == null || !lastGenerateResult.hasGaps()) {
-            gapWarningLabel.setVisible(false);
-            gapWarningLabel.setManaged(false);
-            return;
-        }
-        gapWarningLabel.setText("\u26a0  UNCOVERED: "
-                + String.join(", ", lastGenerateResult.uncoveredWindows()));
-        gapWarningLabel.setVisible(true);
-        gapWarningLabel.setManaged(true);
     }
 
     // Utility helpers

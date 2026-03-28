@@ -66,7 +66,7 @@ public class EditSupplyModal {
                 titleBar.setPadding(new Insets(0, 8, 0, 14));
                 titleBar.setPrefHeight(40);
                 titleBar.setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-border-color: "
-                                + OUTLINE_VAR + "/20; -fx-border-width: 0 0 1 0;");
+                                + "rgba(69,72,60,0.2); -fx-border-width: 0 0 1 0;");
 
                 Region iconBox = new Region();
                 iconBox.setMinSize(16, 16);
@@ -131,7 +131,7 @@ public class EditSupplyModal {
                 footer.setAlignment(Pos.CENTER_RIGHT);
                 footer.setPadding(new Insets(14, 20, 14, 20));
                 footer.setStyle("-fx-background-color: rgba(41,43,38,0.5); -fx-border-color: "
-                                + OUTLINE_VAR + "/10; -fx-border-width: 1 0 0 0;");
+                                + "rgba(69,72,60,0.1); -fx-border-width: 1 0 0 0;");
 
                 Button cancelBtn = cancelButton(stage);
 
@@ -216,7 +216,7 @@ public class EditSupplyModal {
                                 + " -fx-padding: 10 12 8 12; -fx-prompt-text-fill: rgba(143,146,132,0.35);";
         }
 
-        static Button windowCloseBtn(Stage stage) {
+        public static Button windowCloseBtn(Stage stage) {
                 Button btn = new Button("✕");
                 btn.setPrefSize(36, 40);
                 String base = "-fx-background-color: transparent; -fx-text-fill: rgba(143,146,132,0.6);"
@@ -230,7 +230,7 @@ public class EditSupplyModal {
                 return btn;
         }
 
-        static Button cancelButton(Stage stage) {
+        public static Button cancelButton(Stage stage) {
                 Button btn = new Button("CANCEL");
                 btn.setPrefHeight(44);
                 btn.setPadding(new Insets(0, 24, 0, 24));
@@ -246,7 +246,7 @@ public class EditSupplyModal {
                 return btn;
         }
 
-        static void centre(Stage stage, Window owner) {
+        public static void centre(Stage stage, Window owner) {
                 if (owner != null) {
                         stage.setX(owner.getX() + owner.getWidth() / 2 - stage.getWidth() / 2);
                         stage.setY(owner.getY() + owner.getHeight() / 2 - stage.getHeight() / 2);

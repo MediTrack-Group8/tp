@@ -54,4 +54,15 @@ public class JsonMediTrackStorage {
     public void saveData(JsonSerializableMediTrack data) throws IOException {
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), data);
     }
+
+    /**
+     * Saves data to a specific path (used for atomic writes via temp files).
+     *
+     * @param data       The data to serialize.
+     * @param targetPath The file path to write to.
+     * @throws IOException If there is an issue writing the file.
+     */
+    public void saveDataToPath(JsonSerializableMediTrack data, Path targetPath) throws IOException {
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(targetPath.toFile(), data);
+    }
 }

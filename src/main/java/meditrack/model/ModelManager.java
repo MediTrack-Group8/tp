@@ -22,9 +22,6 @@ public class ModelManager implements Model {
             "Index %d is out of bounds. The list currently has %d member(s).";
     private static final String MSG_SLOT_OUT_OF_BOUNDS =
             "Slot index %d is out of bounds. The roster currently has %d slot(s).";
-    private static final String MSG_NO_FIT =
-            "Cannot generate roster: no personnel with status FIT currently exist.";
-
     private final MediTrack mediTrack;
     private final Session session;
 
@@ -171,17 +168,6 @@ public class ModelManager implements Model {
         return getInternalPersonnelList().stream()
                 .filter(p -> p.getStatus() == statusFilter)
                 .collect(Collectors.toUnmodifiableList());
-    }
-
-    /** Shuffled list of FIT personnel for duty roster. */
-    @Override
-    public List<Personnel> generateRoster() throws CommandException {
-        List<Personnel> fit = new ArrayList<>(getFilteredPersonnelList(Status.FIT));
-        if (fit.isEmpty()) {
-            throw new CommandException(MSG_NO_FIT);
-        }
-        Collections.shuffle(fit);
-        return fit;
     }
 
     /** Number of people in the roster. */

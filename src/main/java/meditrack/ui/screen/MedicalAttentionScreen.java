@@ -143,7 +143,7 @@ public class MedicalAttentionScreen extends VBox {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.setFixedCellSize(50);
         table.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: transparent;"
-                + " -fx-table-cell-border-color: " + OUTLINE_VAR + "/20;"
+                + " -fx-table-cell-border-color: rgba(69,72,60,0.2);"
                 + " -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
         table.setPlaceholder(buildEmptyPlaceholder());
 
@@ -265,7 +265,7 @@ public class MedicalAttentionScreen extends VBox {
         TableColumn<Personnel, String> col = new TableColumn<>("STATUS");
         col.setMinWidth(160);
         col.setMaxWidth(200);
-        col.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getStatus().toString()));
+        col.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getStatus().name()));
         col.setCellFactory(c -> new TableCell<Personnel, String>() {
             private final Label badge = new Label();
             {
@@ -280,7 +280,6 @@ public class MedicalAttentionScreen extends VBox {
                     setStyle("");
                     return;
                 }
-                // Derive Status from the cell value directly to avoid getIndex() race conditions
                 Status status;
                 try {
                     status = Status.valueOf(v);
@@ -288,11 +287,13 @@ public class MedicalAttentionScreen extends VBox {
                     status = Status.PENDING;
                 }
                 String color = statusColor(status);
-                badge.setText(v.toUpperCase().replace("_", " "));
+                String rgba40 = hexToRgba(color, 0.4);
+                String rgba08 = hexToRgba(color, 0.08);
+                badge.setText(v.replace("_", " "));
                 badge.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                         + " -fx-font-family: 'Consolas', monospace;"
-                        + " -fx-border-color: " + color + "/40; -fx-border-width: 1;"
-                        + " -fx-background-color: " + color + "/08;");
+                        + " -fx-border-color: " + rgba40 + "; -fx-border-width: 1;"
+                        + " -fx-background-color: " + rgba08 + ";");
                 setGraphic(badge);
                 setStyle("-fx-background-color: transparent;");
             }
@@ -434,6 +435,13 @@ public class MedicalAttentionScreen extends VBox {
         lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                 + " -fx-font-family: 'Consolas', monospace;");
         return lbl;
+    }
+
+    private static String hexToRgba(String hex, double alpha) {
+        int r = Integer.parseInt(hex.substring(1, 3), 16);
+        int g = Integer.parseInt(hex.substring(3, 5), 16);
+        int b = Integer.parseInt(hex.substring(5, 7), 16);
+        return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
     }
 
     private Label buildEmptyPlaceholder() {

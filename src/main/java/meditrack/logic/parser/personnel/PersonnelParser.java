@@ -64,15 +64,6 @@ public class PersonnelParser {
     }
 
     /**
-     * Generates a roster. 
-     *
-     * @return command ready to execute
-     */
-    public static GenerateRosterCommand parseGenerateRoster() {
-        return new GenerateRosterCommand();
-    }
-
-    /**
      * Returns the value after prefix, or null if missing.
      */
     private static String extractPrefixValue(String args, String prefix) {

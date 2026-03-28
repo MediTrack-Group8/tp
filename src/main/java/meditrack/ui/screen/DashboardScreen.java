@@ -383,7 +383,7 @@ public class DashboardScreen extends VBox {
         Label tagLbl = new Label(tag);
         tagLbl.setStyle("-fx-text-fill: " + accentColor + "; -fx-font-size: 9px;"
                 + " -fx-font-weight: bold; -fx-padding: 2 8 2 8;"
-                + " -fx-border-color: " + accentColor + "/40; -fx-border-width: 1;"
+                + " -fx-border-color: " + accentColor + "; -fx-border-width: 1;"
                 + " -fx-font-family: 'Consolas', monospace;");
 
         row.getChildren().addAll(sq, name, spacer, qty, expiry, tagLbl);

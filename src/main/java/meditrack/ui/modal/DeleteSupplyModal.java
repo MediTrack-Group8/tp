@@ -64,7 +64,7 @@ public class DeleteSupplyModal {
         titleBar.setPadding(new Insets(0, 8, 0, 14));
         titleBar.setPrefHeight(40);
         titleBar.setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-border-color: "
-                + OUTLINE_VAR + "/20; -fx-border-width: 0 0 1 0;");
+                + "rgba(69,72,60,0.2); -fx-border-width: 0 0 1 0;");
 
         Region iconBox = new Region();
         iconBox.setMinSize(16, 16); iconBox.setMaxSize(16, 16);
@@ -141,7 +141,7 @@ public class DeleteSupplyModal {
         footer.setAlignment(Pos.CENTER_RIGHT);
         footer.setPadding(new Insets(14, 20, 14, 20));
         footer.setStyle("-fx-background-color: rgba(41,43,38,0.5); -fx-border-color: "
-                + OUTLINE_VAR + "/10; -fx-border-width: 1 0 0 0;");
+                + "rgba(69,72,60,0.1); -fx-border-width: 1 0 0 0;");
 
         Button cancelBtn = EditSupplyModal.cancelButton(stage);
 
@@ -194,7 +194,7 @@ public class DeleteSupplyModal {
         titleBar.setPadding(new Insets(0, 8, 0, 14));
         titleBar.setPrefHeight(40);
         titleBar.setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-border-color: "
-                + OUTLINE_VAR + "/20; -fx-border-width: 0 0 1 0;");
+                + "rgba(69,72,60,0.2); -fx-border-width: 0 0 1 0;");
         Label errTitle = new Label("OPERATION BLOCKED");
         errTitle.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 11px; -fx-font-weight: bold;"
                 + " -fx-font-family: 'Consolas', monospace;");
