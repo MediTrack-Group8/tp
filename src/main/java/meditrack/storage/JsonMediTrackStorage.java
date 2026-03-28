@@ -41,7 +41,6 @@ public class JsonMediTrackStorage {
             JsonSerializableMediTrack data = objectMapper.readValue(file, JsonSerializableMediTrack.class);
             return Optional.of(data);
         } catch (IOException e) {
-            // In a full app, you would log this error. For now, we return empty.
             return Optional.empty();
         }
     }

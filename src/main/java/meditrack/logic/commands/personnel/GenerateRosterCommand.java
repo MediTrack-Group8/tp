@@ -12,8 +12,7 @@ import meditrack.model.Personnel;
 import meditrack.model.Role;
 
 /**
- * Shuffles FIT personnel into a duty order. Not saved to the model;
- * UI reads {@link #getLastRoster()} after run.
+ * Shuffles FIT personnel into a duty order.
  */
 public class GenerateRosterCommand extends Command {
 
@@ -27,7 +26,7 @@ public class GenerateRosterCommand extends Command {
 
     private List<Personnel> lastRoster;
 
-    /** Creates a command; the roster is produced when {@link #execute} runs. */
+    /** Creates a command. */
     public GenerateRosterCommand() {
     }
 
@@ -51,7 +50,7 @@ public class GenerateRosterCommand extends Command {
         return List.of(Role.PLATOON_COMMANDER);
     }
 
-    /** Last roster from {@link #execute}, or {@code null} if not run yet. */
+    /** Last roster from execute, or null if not run yet. */
     public List<Personnel> getLastRoster() {
         return lastRoster;
     }

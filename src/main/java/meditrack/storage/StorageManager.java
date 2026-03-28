@@ -11,7 +11,7 @@ import meditrack.model.Personnel;
 import meditrack.model.ReadOnlyMediTrack;
 
 /**
- * Saves and loads {@link MediTrack} data to {@code data.json} via Jackson.
+ * Saves and loads MediTrack data to data.json via Jackson.
  */
 public class StorageManager implements Storage {
 
@@ -70,7 +70,7 @@ public class StorageManager implements Storage {
         return Optional.of(mediTrack);
     }
 
-    /** Writes {@code data} to data.json. */
+    /** Writes data to data.json. */
     @Override
     public void saveMediTrackData(ReadOnlyMediTrack data) throws IOException {
         List<JsonAdaptedPersonnel> adaptedPersonnel = data.getPersonnelList()
