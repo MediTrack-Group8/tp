@@ -370,26 +370,52 @@ public class InventoryScreen extends VBox {
                 editBtn.setStyle(base);
                 deleteBtn.setStyle(base);
                 box.setAlignment(Pos.CENTER_RIGHT);
+
                 editBtn.setOnMouseEntered(e -> editBtn.setStyle(
                         base.replace("-fx-text-fill: " + SECONDARY, "-fx-text-fill: " + PRIMARY)));
                 editBtn.setOnMouseExited(e -> editBtn.setStyle(base));
+
                 deleteBtn.setOnMouseEntered(e -> deleteBtn.setStyle(
                         base.replace("-fx-text-fill: " + SECONDARY, "-fx-text-fill: " + ERROR)));
                 deleteBtn.setOnMouseExited(e -> deleteBtn.setStyle(base));
+
                 editBtn.setOnAction(e -> {
                     int idx = getIndex();
                     if (idx >= 0 && idx < getTableView().getItems().size()) {
                         Supply supply = getTableView().getItems().get(idx);
-                        int modelIdx = model.getFilteredSupplyList().indexOf(supply) + 1;
-                        EditSupplyModal.show(model, logic, supply, modelIdx, getScene().getWindow());
+
+                        int modelIdx = -1;
+                        ObservableList<Supply> rawList = model.getFilteredSupplyList();
+                        for (int i = 0; i < rawList.size(); i++) {
+                            if (rawList.get(i) == supply) {
+                                modelIdx = i + 1;
+                                break;
+                            }
+                        }
+
+                        if (modelIdx != -1) {
+                            EditSupplyModal.show(model, logic, supply, modelIdx, getScene().getWindow());
+                        }
                     }
                 });
+
                 deleteBtn.setOnAction(e -> {
                     int idx = getIndex();
                     if (idx >= 0 && idx < getTableView().getItems().size()) {
                         Supply supply = getTableView().getItems().get(idx);
-                        int modelIdx = model.getFilteredSupplyList().indexOf(supply) + 1;
-                        DeleteSupplyModal.show(model, logic, supply, modelIdx, getScene().getWindow());
+
+                        int modelIdx = -1;
+                        ObservableList<Supply> rawList = model.getFilteredSupplyList();
+                        for (int i = 0; i < rawList.size(); i++) {
+                            if (rawList.get(i) == supply) {
+                                modelIdx = i + 1;
+                                break;
+                            }
+                        }
+
+                        if (modelIdx != -1) {
+                            DeleteSupplyModal.show(model, logic, supply, modelIdx, getScene().getWindow());
+                        }
                     }
                 });
             }

@@ -2,6 +2,7 @@ package meditrack.ui.screen;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 import javafx.application.Platform;
@@ -20,6 +21,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -480,35 +482,64 @@ public class PersonnelScreen extends VBox {
 
             {
                 styleStatusCombo(combo);
-
                 combo.setButtonCell(combo.getCellFactory().call(null));
 
                 combo.setOnAction(e -> {
                     if (isUpdating) return;
 
                     Personnel p = getTableRow().getItem();
-                    if (p == null || combo.getValue() == null) return;
+                    Status newStatus = combo.getValue();
+                    if (p == null || newStatus == null) return;
+                    if (p.getStatus() == newStatus) return;
 
-                    if (p.getStatus() == combo.getValue()) return;
+                    int durationDays = 0;
+
+                    if (newStatus == Status.MC || newStatus == Status.LIGHT_DUTY) {
+                        TextInputDialog dialog = new TextInputDialog("3");
+                        dialog.setTitle("Medical Status Duration");
+                        dialog.setHeaderText("Set duration for " + newStatus.name().replace("_", " "));
+                        dialog.setContentText("Enter number of days:");
+
+                        dialog.getDialogPane().setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + OUTLINE_VAR + "; -fx-border-width: 1;");
+                        dialog.getEditor().setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + ON_SURFACE + "; -fx-font-family: 'Consolas', monospace;");
+                        dialog.getDialogPane().lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: " + SECONDARY + "; -fx-font-family: 'Consolas', monospace;"));
+
+                        Optional<String> result = dialog.showAndWait();
+
+                        if (result.isPresent()) {
+                            try {
+                                durationDays = Integer.parseInt(result.get().trim());
+                                if (durationDays <= 0) throw new NumberFormatException();
+                            } catch (NumberFormatException ex) {
+                                setFeedback("Invalid duration. Status update cancelled.", true);
+                                revertCombo(p.getStatus());
+                                return;
+                            }
+                        } else {
+                            revertCombo(p.getStatus());
+                            return;
+                        }
+                    }
 
                     int idx = model.getFilteredPersonnelList(null).indexOf(p) + 1;
                     try {
-                        new UpdateStatusCommand(idx, combo.getValue()).execute(model);
+                        new UpdateStatusCommand(idx, newStatus, durationDays).execute(model);
                         setFeedback("Status updated for " + p.getName() + ".", false);
                         saveData();
                         refresh();
                     } catch (CommandException ex) {
                         setFeedback("Error: " + ex.getMessage(), true);
+                        revertCombo(p.getStatus());
                     }
                 });
             }
 
-            /**
-             * Renders the status combo box for editable cells.
-             *
-             * @param item  unused status is read from the row item
-             * @param empty true if this cell has no data
-             */
+            private void revertCombo(Status originalStatus) {
+                isUpdating = true;
+                combo.setValue(originalStatus);
+                isUpdating = false;
+            }
+
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -517,11 +548,9 @@ public class PersonnelScreen extends VBox {
                     setStyle("");
                 } else {
                     Status current = getTableRow().getItem().getStatus();
-
                     isUpdating = true;
                     combo.setValue(current);
                     isUpdating = false;
-
                     setGraphic(combo);
                     setStyle("-fx-background-color: transparent;");
                 }

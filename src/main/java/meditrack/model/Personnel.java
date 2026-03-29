@@ -1,5 +1,6 @@
 package meditrack.model;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -13,6 +14,7 @@ public class Personnel {
     private BloodGroup bloodGroup;
     private String allergies;
     private LocalDateTime lastModified;
+    private LocalDate statusExpiryDate;
 
     /**
      * Constructs a Personnel record with no blood group or allergies recorded.
@@ -62,6 +64,17 @@ public class Personnel {
 
     public LocalDateTime getLastModified() {
         return lastModified;
+    }
+
+    /** Returns the date the current medical status expires, or null if none. */
+    public LocalDate getStatusExpiryDate() {
+        return statusExpiryDate;
+    }
+
+    /** Sets the medical status expiry date. */
+    public void setStatusExpiryDate(LocalDate statusExpiryDate) {
+        this.statusExpiryDate = statusExpiryDate;
+        this.lastModified = LocalDateTime.now();
     }
 
     /** Updates the medical readiness status of this personnel member. */

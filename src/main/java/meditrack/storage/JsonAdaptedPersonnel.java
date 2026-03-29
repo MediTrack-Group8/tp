@@ -1,5 +1,6 @@
 package meditrack.storage;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -20,20 +21,23 @@ public class JsonAdaptedPersonnel {
     public final String bloodGroup;
     public final String allergies;
     public final String lastModified;
+    public final String statusExpiryDate;
 
     /** Jackson calls this when loading the file. */
     @JsonCreator
     public JsonAdaptedPersonnel(
-            @JsonProperty("name")         String name,
-            @JsonProperty("status")       String status,
-            @JsonProperty("bloodGroup")   String bloodGroup,
-            @JsonProperty("allergies")    String allergies,
-            @JsonProperty("lastModified") String lastModified) {
-        this.name         = name;
-        this.status       = status;
-        this.bloodGroup   = bloodGroup;
-        this.allergies    = allergies;
-        this.lastModified = lastModified;
+            @JsonProperty("name")             String name,
+            @JsonProperty("status")           String status,
+            @JsonProperty("bloodGroup")       String bloodGroup,
+            @JsonProperty("allergies")        String allergies,
+            @JsonProperty("lastModified")     String lastModified,
+            @JsonProperty("statusExpiryDate") String statusExpiryDate) {
+        this.name             = name;
+        this.status           = status;
+        this.bloodGroup       = bloodGroup;
+        this.allergies        = allergies;
+        this.lastModified     = lastModified;
+        this.statusExpiryDate = statusExpiryDate;
     }
 
     /** For saving turns model object into something Jackson can write. */
@@ -43,7 +47,8 @@ public class JsonAdaptedPersonnel {
                 source.getStatus().name(),
                 source.getBloodGroup() != null ? source.getBloodGroup().name() : null,
                 source.getAllergies(),
-                source.getLastModified() != null ? source.getLastModified().toString() : LocalDateTime.now().toString()
+                source.getLastModified() != null ? source.getLastModified().toString() : LocalDateTime.now().toString(),
+                source.getStatusExpiryDate() != null ? source.getStatusExpiryDate().toString() : null
         );
     }
 
@@ -72,6 +77,10 @@ public class JsonAdaptedPersonnel {
 
         if (lastModified != null && !lastModified.isBlank()) {
             person.setLastModified(LocalDateTime.parse(lastModified));
+        }
+
+        if (statusExpiryDate != null && !statusExpiryDate.isBlank()) {
+            person.setStatusExpiryDate(LocalDate.parse(statusExpiryDate));
         }
 
         return person;

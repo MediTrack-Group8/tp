@@ -1,5 +1,7 @@
 package meditrack.model;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,6 +26,15 @@ public class ModelManager implements Model {
             "Slot index %d is out of bounds. The roster currently has %d slot(s).";
     private final MediTrack mediTrack;
     private final Session session;
+    private Clock clock = Clock.systemDefaultZone();
+
+    public Clock getClock() {
+        return clock;
+    }
+
+    public void setClock(Clock clock) {
+        this.clock = clock;
+    }
 
     /**
      * Creates a manager backed by the given MediTrack.
@@ -33,6 +44,8 @@ public class ModelManager implements Model {
     public ModelManager(MediTrack mediTrack) {
         this.mediTrack = mediTrack;
         this.session = Session.getInstance();
+
+        cleanExpiredStatuses();
     }
 
     /** Creates a manager with an empty MediTrack. */
@@ -220,5 +233,21 @@ public class ModelManager implements Model {
                     String.format(MSG_SLOT_OUT_OF_BOUNDS, zeroBasedIndex, slots.size()));
         }
         slots.set(zeroBasedIndex, newSlot);
+    }
+
+    /**
+     * Scans the roster for expired medical statuses (MC/Light Duty) and
+     * automatically reverts those personnel to FIT.
+     */
+    public void cleanExpiredStatuses() {
+        LocalDate today = LocalDate.now(clock);
+        List<Personnel> roster = getInternalPersonnelList();
+
+        for (Personnel p : roster) {
+            if (p.getStatusExpiryDate() != null && !today.isBefore(p.getStatusExpiryDate())) {
+                p.setStatus(Status.FIT);
+                p.setStatusExpiryDate(null);
+            }
+        }
     }
 }
