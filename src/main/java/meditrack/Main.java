@@ -13,17 +13,26 @@ import meditrack.ui.LoginScreen;
 import meditrack.ui.MainAppScreen;
 
 /**
- * JavaFX entry point: wires login and the main window.
+ * The main entry point for the MediTrack JavaFX application.
+ * Handles the application lifecycle, including booting the storage layer,
+ * loading data, and transitioning between the login and main application screens.
  */
 public class Main extends Application {
 
     private Stage primaryStage;
     private final StorageManager storageManager = new StorageManager();
 
-    /** Loaded once per session from disk (or empty if no save yet). */
+    /** * The root data container loaded once per session from the disk.
+     * If no save file exists, an empty MediTrack instance is created.
+     */
     private MediTrack mediTrack;
 
-    /** Starts the app: load data, then go straight to login. */
+    /**
+     * Initializes the primary JavaFX stage, loads necessary data via the StorageManager,
+     * and displays the Login Screen.
+     *
+     * @param primaryStage The primary window provided by the JavaFX runtime.
+     */
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -36,24 +45,32 @@ public class Main extends Application {
                 ? (MediTrack) loaded.get()
                 : new MediTrack();
 
-        // Boot straight into the Login Screen!
+        // Bypass any setup wizard and boot straight into the Login Screen
         showLoginScreen();
 
         primaryStage.show();
     }
 
+    /**
+     * Transitions the application view to the Role-Based Access Control Login Screen.
+     */
     private void showLoginScreen() {
         LoginScreen loginScreen = new LoginScreen(this::showMainAppScreen);
         primaryStage.setScene(new Scene(loginScreen));
     }
 
+    /**
+     * Transitions the application view to the Main Dashboard after successful authentication.
+     */
     private void showMainAppScreen() {
         MainAppScreen mainApp = new MainAppScreen(mediTrack, storageManager, this::showLoginScreen);
         primaryStage.setScene(new Scene(mainApp, 900, 620));
     }
 
     /**
-     * @param args unused
+     * The standard Java entry point.
+     *
+     * @param args Command line arguments (unused).
      */
     public static void main(String[] args) {
         launch(args);

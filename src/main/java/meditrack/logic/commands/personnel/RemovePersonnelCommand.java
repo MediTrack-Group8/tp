@@ -1,5 +1,7 @@
 package meditrack.logic.commands.personnel;
 
+import java.util.List;
+
 import meditrack.logic.commands.Command;
 import meditrack.logic.commands.CommandResult;
 import meditrack.logic.commands.exceptions.CommandException;
@@ -7,9 +9,11 @@ import meditrack.model.Model;
 import meditrack.model.ModelManager;
 import meditrack.model.Personnel;
 import meditrack.model.Role;
-import java.util.List;
 
-/** Removes a roster entry by 1-based index. */
+/**
+ * Removes a personnel member from the roster using their displayed 1-based index.
+ * This operation is strictly reserved for Medical Officers.
+ */
 public class RemovePersonnelCommand extends Command {
 
     public static final String COMMAND_WORD = "remove_personnel";
@@ -22,12 +26,22 @@ public class RemovePersonnelCommand extends Command {
 
     private final int oneBasedIndex;
 
-    /** @param oneBasedIndex row number */
+    /**
+     * Constructs a command to remove a personnel member.
+     *
+     * @param oneBasedIndex The 1-based row number displayed in the UI.
+     */
     public RemovePersonnelCommand(int oneBasedIndex) {
         this.oneBasedIndex = oneBasedIndex;
     }
 
-    /** Removes the person at the stored index. */
+    /**
+     * Executes the command to permanently delete the personnel from the system.
+     *
+     * @param model The application model interface.
+     * @return A CommandResult containing the name of the removed personnel.
+     * @throws CommandException If the index provided is out of bounds.
+     */
     @Override
     public CommandResult execute(Model model) throws CommandException {
         ModelManager manager = (ModelManager) model;
@@ -35,13 +49,21 @@ public class RemovePersonnelCommand extends Command {
         return new CommandResult(String.format(MESSAGE_SUCCESS, removed.getName()));
     }
 
-    /** Medical officer only. */
+    /**
+     * Retrieves the list of roles authorized to execute this command.
+     *
+     * @return A list containing only Role.MEDICAL_OFFICER.
+     */
     @Override
     public List<Role> getRequiredRoles() {
         return List.of(Role.MEDICAL_OFFICER);
     }
 
-    /** Returns the 1-based index for this command. */
+    /**
+     * Retrieves the target 1-based index.
+     *
+     * @return The 1-based index integer.
+     */
     public int getOneBasedIndex() {
         return oneBasedIndex;
     }

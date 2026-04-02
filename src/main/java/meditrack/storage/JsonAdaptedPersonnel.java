@@ -2,15 +2,19 @@ package meditrack.storage;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.BloodGroup;
 import meditrack.model.Personnel;
 import meditrack.model.Status;
 
 /**
- * Personnel as JSON for Jackson.
+ * Jackson-friendly version of {@link Personnel}.
+ * This class serves as a Data Transfer Object (DTO) to safely serialize and
+ * deserialize personnel records to and from the JSON storage file.
  */
 public class JsonAdaptedPersonnel {
 
@@ -23,7 +27,17 @@ public class JsonAdaptedPersonnel {
     public final String lastModified;
     public final String statusExpiryDate;
 
-    /** Jackson calls this when loading the file. */
+    /**
+     * Constructs a {@code JsonAdaptedPersonnel} with the given personnel details.
+     * Jackson uses this constructor automatically when reading from the JSON file.
+     *
+     * @param name             The name of the personnel.
+     * @param status           The medical status as a string.
+     * @param bloodGroup       The blood group as a string.
+     * @param allergies        The recorded allergies.
+     * @param lastModified     The timestamp of the last edit.
+     * @param statusExpiryDate The expiry date of the current status.
+     */
     @JsonCreator
     public JsonAdaptedPersonnel(
             @JsonProperty("name")             String name,
@@ -40,7 +54,12 @@ public class JsonAdaptedPersonnel {
         this.statusExpiryDate = statusExpiryDate;
     }
 
-    /** For saving turns model object into something Jackson can write. */
+    /**
+     * Converts a given {@code Personnel} domain object into this Jackson-friendly adapted object.
+     *
+     * @param source The original Personnel object.
+     * @return The adapted JSON object ready for writing to disk.
+     */
     public static JsonAdaptedPersonnel fromModelType(Personnel source) {
         return new JsonAdaptedPersonnel(
                 source.getName(),
@@ -53,7 +72,11 @@ public class JsonAdaptedPersonnel {
     }
 
     /**
-     * Load path validates name/status and maps enums; throws if data looks corrupt.
+     * Converts this JSON DTO back into the {@code Personnel} domain object.
+     * Enforces strict validation to prevent application crashes from corrupted JSON files.
+     *
+     * @return The validated Personnel object.
+     * @throws CommandException If any required field is missing or contains invalid data.
      */
     public Personnel toModelType() throws CommandException {
         if (name == null || name.isBlank()) {

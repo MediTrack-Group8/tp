@@ -2,35 +2,43 @@ package meditrack.model;
 
 /**
  * Represents the medical readiness status of a Personnel member.
- *
- * Valid values match the team's data schema.
+ * Valid values dictate deployment eligibility and role-based permissions.
  */
 public enum Status {
-    PENDING,        // Newly added by PC, awaiting MO assessment
-    FIT,            // Medically cleared for duty
-    LIGHT_DUTY,   // Requires MO monitoring
-    MC,          // Requires MO monitoring
-    CASUALTY;        // Marked unwell outfield by Field Medic, requires MO assessment
+    /** Newly added by Platoon Commander, awaiting Medical Officer assessment. */
+    PENDING,
+    /** Medically cleared for full duty and deployment. */
+    FIT,
+    /** Requires monitoring; assigned light physical duties. */
+    LIGHT_DUTY,
+    /** Medical Certificate; excused from duty, requires monitoring. */
+    MC,
+    /** Marked unwell in the field by a Field Medic, requires MO assessment. */
+    CASUALTY;
 
     /**
-     * Returns true if this status qualifies the person for full deployment.
-     * Only FIT personnel appear in the duty roster.
+     * Determines if the current status qualifies the personnel for full deployment.
+     * Only FIT personnel are eligible to appear in the active duty roster.
+     *
+     * @return {@code true} if the status is FIT, {@code false} otherwise.
      */
     public boolean isDeployable() {
         return this == FIT;
     }
 
     /**
-     * Parses a string (case-insensitive, underscores or spaces) to a Status value.
+     * Parses a string representation into the corresponding Status enum.
+     * Handles case-insensitivity and converts spaces to underscores for flexibility.
      *
-     * @param value raw string from user input or JSON storage
-     * @return the matching Status
-     * @throws IllegalArgumentException if value does not match any Status
+     * @param value The raw string from user input or JSON storage.
+     * @return The matching Status enum.
+     * @throws IllegalArgumentException If the value is null or does not match any valid Status.
      */
     public static Status fromString(String value) {
         if (value == null) {
             throw new IllegalArgumentException("Status value must not be null.");
         }
+
         switch (value.trim().toUpperCase().replace(' ', '_')) {
             case "FIT":
                 return FIT;
@@ -48,7 +56,11 @@ public enum Status {
         }
     }
 
-    /** Name with underscores replaced by spaces. */
+    /**
+     * Returns a human-readable representation of the status, replacing underscores with spaces.
+     *
+     * @return The formatted status string.
+     */
     @Override
     public String toString() {
         return name().replace('_', ' ');

@@ -9,27 +9,43 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * A class to access MediTrack data stored as a JSON file on the hard drive.
- * Handles the low-level File I/O operations using the Jackson library.
+ * Handles the low-level File I/O operations to persist MediTrack data to the hard drive using Jackson.
  */
 public class JsonMediTrackStorage {
 
-    private final Path filePath = Paths.get("data.json");
+    private final Path filePath;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Retrieves the file path where the application data is stored.
+     * Creates a storage instance pointing to the default data.json path.
+     */
+    public JsonMediTrackStorage() {
+        this.filePath = Paths.get("data.json");
+    }
+
+    /**
+     * Creates a storage instance pointing to a specified file path.
+     * Useful for dependency injection during testing to prevent overwriting production data.
      *
-     * @return The Path object pointing to the data.json file.
+     * @param filePath The custom Path to read from and write to.
+     */
+    public JsonMediTrackStorage(Path filePath) {
+        this.filePath = filePath;
+    }
+
+    /**
+     * Retrieves the configured file path where the data is stored.
+     *
+     * @return The Path object.
      */
     public Path getFilePath() {
         return filePath;
     }
 
     /**
-     * Reads the serialized data from the JSON file.
+     * Reads the serialized application data from the JSON file.
      *
-     * @return An Optional containing the JsonSerializableMediTrack object if successful, or an empty Optional if the file does not exist or cannot be read.
+     * @return An Optional containing the data if successful, or empty if the file is missing or unreadable.
      */
     public Optional<JsonSerializableMediTrack> readData() {
         File file = filePath.toFile();
@@ -46,23 +62,12 @@ public class JsonMediTrackStorage {
     }
 
     /**
-     * Saves the serialized data to the JSON file.
+     * Saves the serialized data directly to the configured JSON file.
      *
-     * @param data The JsonSerializableMediTrack object containing all application data to be saved.
-     * @throws IOException If there is an issue writing the file to the disk.
+     * @param data The root data wrapper to serialize.
+     * @throws IOException If there is an issue writing to the disk.
      */
     public void saveData(JsonSerializableMediTrack data) throws IOException {
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), data);
-    }
-
-    /**
-     * Saves data to a specific path (used for atomic writes via temp files).
-     *
-     * @param data       The data to serialize.
-     * @param targetPath The file path to write to.
-     * @throws IOException If there is an issue writing the file.
-     */
-    public void saveDataToPath(JsonSerializableMediTrack data, Path targetPath) throws IOException {
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(targetPath.toFile(), data);
     }
 }

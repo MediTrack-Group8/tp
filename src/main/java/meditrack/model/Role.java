@@ -1,7 +1,8 @@
 package meditrack.model;
 
 /**
- * Represents the roles available in the MediTrack system.
+ * Represents the operational roles available within the MediTrack system.
+ * Used to enforce strict Role-Based Access Control (RBAC) across application commands.
  */
 public enum Role {
     FIELD_MEDIC("Field Medic"),
@@ -12,15 +13,19 @@ public enum Role {
     private final String displayName;
 
     /**
-     * Constructs a Role with a specific display name for the UI.
-     * @param displayName The formatted string to show in dropdowns and labels.
+     * Constructs a Role with a specific, human-readable display name.
+     *
+     * @param displayName The formatted string used in UI dropdowns and labels.
      */
     Role(String displayName) {
         this.displayName = displayName;
     }
 
     /**
-     * Overrides the default enum string 
+     * Retrieves the UI-friendly display name of the role.
+     * Overrides the default uppercase enum string formatting.
+     *
+     * @return The formatted display name string.
      */
     @Override
     public String toString() {

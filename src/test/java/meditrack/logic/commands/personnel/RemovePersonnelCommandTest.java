@@ -1,0 +1,63 @@
+package meditrack.logic.commands.personnel;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import meditrack.logic.commands.CommandResult;
+import meditrack.logic.commands.exceptions.CommandException;
+import meditrack.model.ModelManager;
+import meditrack.model.Role;
+import meditrack.model.Session;
+import meditrack.model.Status;
+
+/**
+ * JUnit tests for RemovePersonnelCommand, verifying list bounds checking and execution.
+ */
+public class RemovePersonnelCommandTest {
+
+    private ModelManager modelManager;
+
+    @BeforeEach
+    public void setUp() throws CommandException {
+        modelManager = new ModelManager();
+        Session.getInstance().setRole(Role.MEDICAL_OFFICER);
+        modelManager.addPersonnel("Alice", Status.FIT);
+        modelManager.addPersonnel("Bob", Status.MC);
+    }
+
+    @Test
+    public void execute_validIndex_success() throws CommandException {
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(1); // Target Alice
+
+        CommandResult result = cmd.execute(modelManager);
+
+        assertEquals(1, modelManager.getPersonnelCount());
+        assertEquals("Bob", modelManager.getFilteredPersonnelList(null).get(0).getName());
+        assertEquals(String.format(RemovePersonnelCommand.MESSAGE_SUCCESS, "Alice"), result.getFeedbackToUser());
+    }
+
+    @Test
+    public void execute_invalidIndexOutOfBounds_throwsCommandException() {
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(5); // Out of bounds
+
+        assertThrows(CommandException.class, () -> cmd.execute(modelManager));
+    }
+
+    @Test
+    public void execute_invalidZeroIndex_throwsCommandException() {
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(0); // Zero index is invalid
+
+        assertThrows(CommandException.class, () -> cmd.execute(modelManager));
+    }
+
+    @Test
+    public void getRequiredRoles_isMedicalOfficerOnly() {
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(1);
+        assertEquals(List.of(Role.MEDICAL_OFFICER), cmd.getRequiredRoles());
+    }
+}

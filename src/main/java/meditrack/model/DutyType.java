@@ -1,7 +1,8 @@
 package meditrack.model;
 
 /**
- * Represents the type of duty assigned.
+ * Represents the specific types of duties that can be assigned to personnel.
+ * Used by the RosterAutoGenerator to determine shift lengths and constraints.
  */
 public enum DutyType {
     GUARD_DUTY("Guard Duty"),
@@ -12,11 +13,21 @@ public enum DutyType {
 
     private final String displayName;
 
+    /**
+     * Constructs a DutyType with a human-readable display name.
+     *
+     * @param displayName The formatted string to be used in UI dropdowns and labels.
+     */
     DutyType(String displayName) {
         this.displayName = displayName;
     }
 
-    /** Label. */
+    /**
+     * Retrieves the UI-friendly display name of the duty.
+     * Overrides the default uppercase enum formatting.
+     *
+     * @return The formatted display name string.
+     */
     @Override
     public String toString() {
         return displayName;
