@@ -1,11 +1,5 @@
 package meditrack.storage;
 
-import meditrack.model.DutySlot;
-import meditrack.model.Personnel;
-import meditrack.model.ReadOnlyMediTrack;
-import meditrack.model.Role;
-import meditrack.model.Status;
-import meditrack.model.Supply;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,24 +9,46 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import meditrack.model.DutySlot;
+import meditrack.model.Personnel;
+import meditrack.model.ReadOnlyMediTrack;
+import meditrack.model.Role;
+import meditrack.model.Status;
+import meditrack.model.Supply;
+
 /**
- * Utility class to export MediTrack data to a universally readable CSV format.
- * Implements Role-Based Access Control (RBAC) to protect medical confidentiality.
+ * Utility class designed to export MediTrack data into a universally readable CSV format.
+ * Strictly enforces Role-Based Access Control (RBAC) to protect medical and operational confidentiality.
  */
 public class CsvExportUtility {
 
     /**
-     * Exports the application data to a CSV file based on the user's security clearance.
+     * Exports the application data to a CSV file in the default "exports" directory.
+     * What data gets exported is strictly determined by the user's security clearance.
      *
-     * @param data The current read-only state of the application data.
+     * @param data        The current read-only state of the application data.
      * @param currentRole The role of the user requesting the export.
      * @return The file path where the CSV was saved.
      * @throws IOException If there is an error writing to the file system.
      */
     public static Path exportData(ReadOnlyMediTrack data, Role currentRole) throws IOException {
+        Path defaultExportDir = Paths.get(System.getProperty("user.dir"), "exports");
+        return exportData(data, currentRole, defaultExportDir);
+    }
+
+    /**
+     * Exports the application data to a specific directory.
+     * This overloaded method supports Dependency Injection for safe, isolated unit testing.
+     *
+     * @param data        The current read-only state of the application data.
+     * @param currentRole The role of the user requesting the export.
+     * @param exportDir   The custom directory path to save the CSV into.
+     * @return The file path where the CSV was saved.
+     * @throws IOException If there is an error writing to the file system.
+     */
+    public static Path exportData(ReadOnlyMediTrack data, Role currentRole, Path exportDir) throws IOException {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         String fileName = currentRole.name() + "_Export_" + timestamp + ".csv";
-        Path exportDir = Paths.get(System.getProperty("user.dir"), "exports");
 
         if (!Files.exists(exportDir)) {
             Files.createDirectories(exportDir);
@@ -58,7 +74,7 @@ public class CsvExportUtility {
                 writer.append("\n");
             }
 
-            // Export Duty Roster (Platoon Commander ONLY) 
+            // --- Export Duty Roster (Platoon Commander ONLY) ---
             if (currentRole == Role.PLATOON_COMMANDER) {
                 writer.append("=== DUTY ROSTER ===\n");
                 writer.append("Time Slot,Duty Type,Personnel\n");
@@ -72,7 +88,7 @@ public class CsvExportUtility {
                 writer.append("\n");
             }
 
-            // Export Supply Inventory (Logistics Officer and Field Medic ONLY) 
+            // --- Export Supply Inventory (Logistics Officer and Field Medic ONLY) ---
             if (currentRole == Role.LOGISTICS_OFFICER || currentRole == Role.FIELD_MEDIC) {
                 writer.append("=== SUPPLY INVENTORY ===\n");
                 writer.append("Item Name,Quantity,Expiry Date,Action Required\n");

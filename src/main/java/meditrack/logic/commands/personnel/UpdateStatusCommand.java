@@ -13,7 +13,10 @@ import meditrack.model.Session;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Changes someone's status, optionally attaching an MC duration. */
+/**
+ * Updates the medical status of a specific personnel in the roster.
+ * Supports attaching an optional medical leave duration (in days) which automatically calculates an expiry date.
+ */
 public class UpdateStatusCommand extends Command {
 
     public static final String COMMAND_WORD = "update_status";
@@ -26,17 +29,21 @@ public class UpdateStatusCommand extends Command {
     private final int durationDays;
 
     /**
-     * @param oneBasedIndex 1-based index
-     * @param newStatus     new status
+     * Constructs an UpdateStatusCommand with no expiration duration (defaults to 0 days).
+     *
+     * @param oneBasedIndex The 1-based index of the personnel in the filtered roster list.
+     * @param newStatus     The new medical status to assign to the personnel.
      */
     public UpdateStatusCommand(int oneBasedIndex, Status newStatus) {
-        this(oneBasedIndex, newStatus, 0); // Default to 0 days
+        this(oneBasedIndex, newStatus, 0);
     }
 
     /**
-     * @param oneBasedIndex 1-based index
-     * @param newStatus     new status
-     * @param durationDays  number of days the status should last
+     * Constructs an UpdateStatusCommand with a specified expiration duration.
+     *
+     * @param oneBasedIndex The 1-based index of the personnel in the filtered roster list.
+     * @param newStatus     The new medical status to assign to the personnel.
+     * @param durationDays  The number of days the medical status should remain active.
      */
     public UpdateStatusCommand(int oneBasedIndex, Status newStatus, int durationDays) {
         this.oneBasedIndex = oneBasedIndex;
@@ -44,7 +51,14 @@ public class UpdateStatusCommand extends Command {
         this.durationDays = durationDays;
     }
 
-    /** Updates the person's status and expiry date. */
+    /**
+     * Executes the command to update the personnel's status and expiry date.
+     * Enforces Role-Based Access Control (RBAC) to ensure Field Medics can only assign the CASUALTY status.
+     *
+     * @param model The application model interface.
+     * @return A CommandResult containing the success message to display to the user.
+     * @throws CommandException If the index is invalid or the user lacks the required authorization.
+     */
     @Override
     public CommandResult execute(Model model) throws CommandException {
         Role currentRole = Session.getInstance().getRole();
@@ -61,7 +75,6 @@ public class UpdateStatusCommand extends Command {
 
         if (durationDays > 0 && (newStatus == Status.MC || newStatus == Status.LIGHT_DUTY)) {
             LocalDate expiryDate = LocalDate.now(manager.getClock()).plusDays(durationDays);
-
             person.setStatusExpiryDate(expiryDate);
             return new CommandResult(String.format(MESSAGE_SUCCESS_WITH_DURATION, name, newStatus, expiryDate));
         } else {
@@ -70,18 +83,30 @@ public class UpdateStatusCommand extends Command {
         }
     }
 
-    /** Medical officer and Field Medic. */
+    /**
+     * Retrieves the list of roles authorized to execute this command.
+     *
+     * @return A list containing Role.MEDICAL_OFFICER and Role.FIELD_MEDIC.
+     */
     @Override
     public List<Role> getRequiredRoles() {
         return List.of(Role.MEDICAL_OFFICER, Role.FIELD_MEDIC);
     }
 
-    /** Returns the 1-based index. */
+    /**
+     * Retrieves the target 1-based index.
+     *
+     * @return The 1-based index of the personnel.
+     */
     public int getOneBasedIndex() {
         return oneBasedIndex;
     }
 
-    /** Returns the new status. */
+    /**
+     * Retrieves the target status.
+     *
+     * @return The new status to be applied.
+     */
     public Status getNewStatus() {
         return newStatus;
     }

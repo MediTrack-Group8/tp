@@ -10,8 +10,9 @@ import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.Supply;
 
 /**
- * Jackson-friendly version of a Supply item.
- * Used to serialize and deserialize Supply objects to and from JSON format.
+ * Jackson-friendly version of {@link Supply}.
+ * Serves as a Data Transfer Object (DTO) to safely serialize and deserialize
+ * medical supply batches to and from the JSON storage file.
  */
 public class JsonAdaptedSupply {
 
@@ -21,6 +22,14 @@ public class JsonAdaptedSupply {
     public final int quantity;
     public final String expiryDate;
 
+    /**
+     * Constructs a {@code JsonAdaptedSupply} with the given details.
+     * Jackson automatically calls this when parsing the JSON save file.
+     *
+     * @param name       The name of the supply.
+     * @param quantity   The stock count.
+     * @param expiryDate The expiration date string.
+     */
     @JsonCreator
     public JsonAdaptedSupply(@JsonProperty("name") String name,
                              @JsonProperty("quantity") int quantity,
@@ -31,7 +40,10 @@ public class JsonAdaptedSupply {
     }
 
     /**
-     * Converts a domain Supply object into its JSON-friendly form.
+     * Converts a domain {@code Supply} object into its JSON-friendly form for storage.
+     *
+     * @param source The original Supply object.
+     * @return The adapted JSON object.
      */
     public static JsonAdaptedSupply fromModelType(Supply source) {
         return new JsonAdaptedSupply(
@@ -41,9 +53,11 @@ public class JsonAdaptedSupply {
     }
 
     /**
-     * Converts this JSON DTO back into a domain Supply object.
+     * Converts this JSON DTO back into the domain {@code Supply} object.
+     * Validates strings and dates to ensure a corrupted data file does not break the application.
      *
-     * @throws CommandException if any stored field is null, blank, or invalid
+     * @return The validated Supply object.
+     * @throws CommandException If any stored field is null, blank, or contains an invalid date format.
      */
     public Supply toModelType() throws CommandException {
         if (name == null || name.isBlank()) {

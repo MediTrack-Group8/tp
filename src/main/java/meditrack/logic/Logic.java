@@ -6,15 +6,19 @@ import meditrack.logic.commands.exceptions.CommandException;
 
 /**
  * API of the Logic component.
- * Defines the contract for the main execution engine of the application.
+ * Defines the strict contract for the main execution engine of the application.
+ * Responsible for routing commands, enforcing security protocols, and triggering data persistence.
  */
 public interface Logic {
+
     /**
-     * Executes the specified command and returns the result.
+     * Executes the specified command and returns the resulting feedback.
+     * Enforces Role-Based Access Control (RBAC) prior to execution and triggers an auto-save upon success.
      *
-     * @param command The command to execute.
-     * @return The result of the command execution, containing feedback for the user.
-     * @throws CommandException If an error occurs during command execution (e.g., unauthorized access).
+     * @param command The validated command to execute.
+     * @return The result of the command execution, containing feedback for the UI to display.
+     * @throws CommandException If an error occurs during execution, if the user lacks authorization,
+     * or if saving the data to the hard drive fails.
      */
     CommandResult executeCommand(Command command) throws CommandException;
 }

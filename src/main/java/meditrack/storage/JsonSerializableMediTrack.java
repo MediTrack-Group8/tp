@@ -8,19 +8,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * An Immutable wrapper class that holds all MediTrack data for Jackson serialization.
- * This class serves as the root JSON object containing the supplies, personnel, and duty slots.
+ * This class serves as the root JSON object containing the lists of supplies, personnel, and duty slots.
  */
 public class JsonSerializableMediTrack {
+
     public final List<JsonAdaptedSupply> supplies = new ArrayList<>();
     public final List<JsonAdaptedPersonnel> personnel = new ArrayList<>();
     public final List<JsonAdaptedDutySlot> dutySlots = new ArrayList<>();
 
     /**
-     * Constructs a JsonSerializableMediTrack with the given data.
+     * Constructs a JsonSerializableMediTrack with the given data lists.
      *
-     * @param supplies     A list of serialized supply items.
-     * @param personnel    A list of serialized personnel records.
-     * @param dutySlots    A list of serialized duty slots (may be null for old data files).
+     * @param supplies  A list of serialized supply items.
+     * @param personnel A list of serialized personnel records.
+     * @param dutySlots A list of serialized scheduled duty slots.
      */
     @JsonCreator
     public JsonSerializableMediTrack(@JsonProperty("supplies") List<JsonAdaptedSupply> supplies,

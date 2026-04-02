@@ -14,16 +14,18 @@ import meditrack.model.DutySlot;
 import meditrack.model.DutyType;
 
 /**
- * Generates a duty roster automatically from a list of FIT personnel.
+ * An algorithmic utility class that automatically generates fair duty rosters.
+ * Enforces constraints such as prohibiting overlapping shifts and ensuring
+ * personnel receive adequate rest blocks (minimum 8 continuous hours).
  */
 public class RosterAutoGenerator {
 
     public static final int DAY_MINUTES = 1440;
-    private static final int MIN_BREAK_MINUTES = 480;   // 8 hours
+    private static final int MIN_BREAK_MINUTES = 480;       // 8 hours
     private static final int DAYTIME_START_MINUTES = 480;   // 08:00
     private static final int DAYTIME_END_MINUTES = 1200;    // 20:00
 
-    /** Default slot duration in minutes for each duty type. */
+    /** Standard slot duration in minutes mapped per duty type. */
     public static final Map<DutyType, Integer> DEFAULT_DURATIONS = Map.of(
             DutyType.GUARD_DUTY, 120,
             DutyType.SENTRY, 120,
@@ -31,18 +33,21 @@ public class RosterAutoGenerator {
             DutyType.MEDICAL_COVER, 240,
             DutyType.STANDBY, 240);
 
-    /** Duty types that cover the full 24-hour day window. */
+    /** Duty types that require full 24-hour coverage. */
     private static final Set<DutyType> ROUND_CLOCK =
             EnumSet.of(DutyType.GUARD_DUTY, DutyType.PATROL);
 
     /**
-     * Result of a single auto-generation run.
+     * Encapsulates the results of a single auto-generation execution.
      *
-     * @param slots            all successfully generated duty slots for the date
-     * @param uncoveredWindows windows no one could cover
+     * @param slots            The successfully scheduled duty slots.
+     * @param uncoveredWindows Time windows that could not be filled due to constraints or lack of personnel.
      */
     public record GenerateResult(List<DutySlot> slots, List<String> uncoveredWindows) {
-        /** Returns true if any time window went uncovered. */
+        /**
+         * Checks if the scheduling algorithm failed to cover all required windows.
+         * @return {@code true} if there are gaps in the roster.
+         */
         public boolean hasGaps() {
             return !uncoveredWindows.isEmpty();
         }
@@ -51,14 +56,15 @@ public class RosterAutoGenerator {
     private RosterAutoGenerator() {}
 
     /**
-     * Generates duty slots for a specific calendar date.
+     * Generates an optimized duty roster for a specific calendar date.
+     * Prioritizes candidates with the lowest cumulative duty count to ensure fair rotation.
      *
-     * @param personnelNames     names of all FIT personnel available for assignment
-     * @param selectedTypes      duty types to schedule
-     * @param date               the calendar date these slots fall on
-     * @param slotDurations      slot duration in minutes per duty type
-     * @param existingDutyCounts cumulative duty count per person name (for fair rotation)
-     * @return result containing generated slots and any uncovered windows
+     * @param personnelNames     A list of eligible (FIT) personnel names.
+     * @param selectedTypes      The list of duties that need to be scheduled for the day.
+     * @param date               The calendar date being scheduled.
+     * @param slotDurations      Custom duration overrides per duty type, in minutes.
+     * @param existingDutyCounts Historical duty count map for fair rotation weighting.
+     * @return A GenerateResult containing the populated slots and any uncovered gaps.
      */
     public static GenerateResult generate(
             List<String> personnelNames,
@@ -71,17 +77,11 @@ public class RosterAutoGenerator {
             return new GenerateResult(List.of(), List.of());
         }
 
-        // Mutable duty counts for fair rotation within this run
         Map<String, Integer> dutyCounts = new HashMap<>(existingDutyCounts);
-        for (String name : personnelNames) {
-            dutyCounts.putIfAbsent(name, 0);
-        }
+        personnelNames.forEach(name -> dutyCounts.putIfAbsent(name, 0));
 
-        // Committed intervals per person: [startMin, endMin] pairs
         Map<String, List<int[]>> personIntervals = new HashMap<>();
-        for (String name : personnelNames) {
-            personIntervals.put(name, new ArrayList<>());
-        }
+        personnelNames.forEach(name -> personIntervals.put(name, new ArrayList<>()));
 
         List<DutySlot> result = new ArrayList<>();
         List<String> uncoveredWindows = new ArrayList<>();
@@ -105,7 +105,6 @@ public class RosterAutoGenerator {
                 } else {
                     uncoveredWindows.add(type + " " + minutesToTime(current) + "–" + minutesToTime(slotEnd));
                 }
-
                 current = slotEnd;
             }
         }
@@ -115,10 +114,7 @@ public class RosterAutoGenerator {
     }
 
     /**
-     * Selects the person with the lowest duty count who satisfies both the
-     * no-overlap and 8-hour break constraints for the proposed time window.
-     *
-     * @return the chosen person's name, or null if nobody is available
+     * Selects the candidate with the lowest duty count who meets all timing constraints.
      */
     private static String pickBestCandidate(
             List<String> names,
@@ -145,9 +141,7 @@ public class RosterAutoGenerator {
         return best;
     }
 
-    // Constraint helpers
-
-    /** Returns true if newStart-newEnd does not overlap any committed interval. */
+    /** Checks if a proposed time block overlaps with already committed intervals. */
     private static boolean hasNoOverlap(List<int[]> intervals, int newStart, int newEnd) {
         for (int[] iv : intervals) {
             if (newStart < iv[1] && newEnd > iv[0]) {
@@ -157,14 +151,11 @@ public class RosterAutoGenerator {
         return true;
     }
 
-    /**
-     * Returns true if, after adding newStart-newEnd, the person still has at
-     * least one 8-hour contiguous free block within the 24-hour day.
-     */
+    /** Ensures the personnel retains at least one continuous 8-hour gap within the 24-hour day. */
     private static boolean hasEightHourBreak(List<int[]> existing, int newStart, int newEnd) {
         List<int[]> all = new ArrayList<>(existing);
         all.add(new int[]{newStart, newEnd});
-        all.sort((a, b) -> Integer.compare(a[0], b[0]));
+        all.sort(Comparator.comparingInt(a -> a[0]));
 
         if (all.get(0)[0] >= MIN_BREAK_MINUTES) {
             return true;
@@ -179,12 +170,7 @@ public class RosterAutoGenerator {
         return afterLast >= MIN_BREAK_MINUTES;
     }
 
-    // Time utilities
-
-    /**
-     * Converts minutes-from-midnight to LocalTime.
-     * 1440 (24:00) maps to LocalTime.MIDNIGHT (00:00).
-     */
+    /** Converts an integer representing minutes-from-midnight into a LocalTime object. */
     private static LocalTime minutesToTime(int minutes) {
         int clamped = minutes % DAY_MINUTES;
         return LocalTime.of(clamped / 60, clamped % 60);

@@ -10,18 +10,35 @@ import meditrack.model.Personnel;
 import meditrack.model.ReadOnlyMediTrack;
 
 /**
- * Saves and loads MediTrack data to data.json via Jackson.
+ * Coordinates the saving and loading of MediTrack data by managing the lower-level JSON storage component.
  */
 public class StorageManager implements Storage {
 
     private final JsonMediTrackStorage jsonStorage;
 
-    /** Creates a storage manager using the default JSON file path. */
+    /**
+     * Creates a StorageManager using the default JSON storage file path.
+     */
     public StorageManager() {
         this.jsonStorage = new JsonMediTrackStorage();
     }
 
-    /** Loads from data.json; skips bad rows. */
+    /**
+     * Creates a StorageManager with an injected JSON storage component.
+     * Primarily used for automated testing.
+     *
+     * @param jsonStorage The configured storage component to use.
+     */
+    public StorageManager(JsonMediTrackStorage jsonStorage) {
+        this.jsonStorage = jsonStorage;
+    }
+
+    /**
+     * Loads the entire application state from disk.
+     * Automatically ignores corrupted individual records to prevent total application failure.
+     *
+     * @return An Optional containing the loaded MediTrack model, or empty if no save exists.
+     */
     @Override
     public Optional<ReadOnlyMediTrack> readMediTrackData() {
         Optional<JsonSerializableMediTrack> rawData = jsonStorage.readData();
@@ -37,8 +54,7 @@ public class StorageManager implements Storage {
                 Personnel p = adapted.toModelType();
                 mediTrack.addPersonnelRecord(p);
             } catch (CommandException e) {
-                System.err.println("[StorageManager] Skipping corrupt personnel record: "
-                        + e.getMessage());
+                System.err.println("[StorageManager] Skipping corrupt personnel record: " + e.getMessage());
             }
         }
 
@@ -46,8 +62,7 @@ public class StorageManager implements Storage {
             try {
                 mediTrack.addSupplyRecord(adapted.toModelType());
             } catch (CommandException e) {
-                System.err.println("[StorageManager] Skipping corrupt supply record: "
-                        + e.getMessage());
+                System.err.println("[StorageManager] Skipping corrupt supply record: " + e.getMessage());
             }
         }
 
@@ -55,15 +70,19 @@ public class StorageManager implements Storage {
             try {
                 mediTrack.addDutySlotRecord(adapted.toModelType());
             } catch (CommandException e) {
-                System.err.println("[StorageManager] Skipping corrupt duty slot record: "
-                        + e.getMessage());
+                System.err.println("[StorageManager] Skipping corrupt duty slot record: " + e.getMessage());
             }
         }
 
         return Optional.of(mediTrack);
     }
 
-    /** Writes data to data.json. */
+    /**
+     * Serializes the current application state and writes it to disk.
+     *
+     * @param data The read-only model data to persist.
+     * @throws IOException If disk writing fails.
+     */
     @Override
     public void saveMediTrackData(ReadOnlyMediTrack data) throws IOException {
         List<JsonAdaptedPersonnel> adaptedPersonnel = data.getPersonnelList()

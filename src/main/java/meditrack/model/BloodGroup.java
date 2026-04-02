@@ -1,13 +1,17 @@
 package meditrack.model;
 
 /**
- * Blood group classification.
- * UNKNOWN is used when the blood group has not been recorded.
+ * Represents the ABO and Rh classification of a personnel member's blood group.
+ * Includes an UNKNOWN fallback for incomplete medical records.
  */
 public enum BloodGroup {
     A_POS, A_NEG, B_POS, B_NEG, AB_POS, AB_NEG, O_POS, O_NEG, UNKNOWN;
 
-    /** Returns the human-readable label */
+    /**
+     * Returns the standardized human-readable label for the blood group (e.g., "A+").
+     *
+     * @return The formatted blood group string.
+     */
     public String display() {
         return switch (this) {
             case A_POS -> "A+";
@@ -23,20 +27,24 @@ public enum BloodGroup {
     }
 
     /**
-     * Parses from a display label.
+     * Parses a string representation into the corresponding BloodGroup enum.
+     * Supports matching against both the human-readable display label (e.g., "O+")
+     * and the raw enum name (e.g., "O_POS").
      *
-     * @param s the string to parse
-     * @return the matching BloodGroup
+     * @param s The string to parse.
+     * @return The matching BloodGroup, or UNKNOWN if the input is null, blank, or unrecognized.
      */
     public static BloodGroup fromString(String s) {
         if (s == null || s.isBlank()) {
             return UNKNOWN;
         }
+
+        String trimmedInput = s.trim();
         for (BloodGroup bg : values()) {
-            if (bg.display().equalsIgnoreCase(s.trim()) || bg.name().equalsIgnoreCase(s.trim())) {
+            if (bg.display().equalsIgnoreCase(trimmedInput) || bg.name().equalsIgnoreCase(trimmedInput)) {
                 return bg;
             }
         }
-        return UNKNOWN;
+        return UNKNOWN; // Failsafe for invalid inputs
     }
 }
