@@ -15,81 +15,90 @@ import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.exceptions.InvalidIndexException;
 
 /**
- * Represents the in-memory model of the MediTrack data.
- * Handles operations related to personnel, supplies, duty slots, and system time.
+ * Represents the in-memory implementation of the application data model.
+ * Coordinates operations between the UI and the underlying MediTrack data structures.
  */
 public class ModelManager implements Model {
 
-    private static final String MSG_DUPLICATE =
-            "A personnel member named \"%s\" already exists.";
-    private static final String MSG_OUT_OF_BOUNDS =
-            "Index %d is out of bounds. The list currently has %d member(s).";
-    private static final String MSG_SLOT_OUT_OF_BOUNDS =
-            "Slot index %d is out of bounds. The roster currently has %d slot(s).";
+    private static final String MSG_DUPLICATE = "A personnel member named \"%s\" already exists.";
+    private static final String MSG_OUT_OF_BOUNDS = "Index %d is out of bounds. The list currently has %d member(s).";
+    private static final String MSG_SLOT_OUT_OF_BOUNDS = "Slot index %d is out of bounds. The roster currently has %d slot(s).";
 
     private final MediTrack mediTrack;
     private final Session session;
     private Clock clock = Clock.systemDefaultZone();
 
     /**
-     * Creates a ModelManager backed by the given MediTrack.
+     * Constructs a ModelManager initialized with existing MediTrack data.
      *
-     * @param mediTrack The MediTrack data instance to manage.
+     * @param mediTrack The populated MediTrack instance.
      */
     public ModelManager(MediTrack mediTrack) {
         this.mediTrack = mediTrack;
-        this.session = Session.getInstance();
+        // Instantiating the session locally to avoid global Singleton state
+        this.session = new Session();
         cleanExpiredStatuses();
     }
 
-    /** * Creates a ModelManager with an empty MediTrack instance.
+    /**
+     * Constructs a ModelManager with an empty MediTrack instance.
      */
     public ModelManager() {
         this(new MediTrack());
     }
 
     /**
-     * Gets the current system clock, used for time-based calculations.
-     * * @return The current Clock instance.
+     * Retrieves the clock used for time-dependent operations.
+     *
+     * @return The current java.time.Clock.
      */
     public Clock getClock() {
         return clock;
     }
 
     /**
-     * Injects a specific clock instance, useful for time-travel simulations and testing.
-     * * @param clock The Clock instance to set.
+     * Injects a custom clock, primarily used for simulating time in unit tests or dev mode.
+     *
+     * @param clock The java.time.Clock to inject.
      */
     public void setClock(Clock clock) {
         this.clock = clock;
     }
 
-    /** * Retrieves the current user session.
-     * * @return The current Session instance.
+    /**
+     * Retrieves the active user session.
+     *
+     * @return The Session instance.
      */
     @Override
     public Session getSession() {
         return session;
     }
 
-    /** * Sets the active operational role for the current session.
-     * * @param role The role to assign to the session.
+    /**
+     * Sets the operational role for the current session.
+     *
+     * @param role The Role to assign.
      */
     @Override
     public void setRole(Role role) {
         session.setRole(role);
     }
 
-    /** * Adds a new supply to the inventory.
-     * * @param supply The supply item to add.
+    /**
+     * Adds a new supply to the inventory.
+     *
+     * @param supply The supply to add.
      */
     @Override
     public void addSupply(Supply supply) {
         mediTrack.addSupply(supply);
     }
 
-    /** * Replaces the supply at the specified index with a new supply object.
-     * * @param targetIndex The index of the supply to edit.
+    /**
+     * Edits a supply at a specific index.
+     *
+     * @param targetIndex  The target Index wrapper.
      * @param editedSupply The updated supply object.
      * @throws InvalidIndexException If the index is out of bounds.
      */
@@ -103,9 +112,11 @@ public class ModelManager implements Model {
         mediTrack.setSupply(zeroIndex, editedSupply);
     }
 
-    /** * Deletes and returns the supply at the specified index.
-     * * @param targetIndex The index of the supply to delete.
-     * @return The deleted supply item.
+    /**
+     * Deletes a supply at a specific index.
+     *
+     * @param targetIndex The target Index wrapper.
+     * @return The deleted Supply object.
      * @throws InvalidIndexException If the index is out of bounds.
      */
     @Override
@@ -118,17 +129,21 @@ public class ModelManager implements Model {
         return mediTrack.removeSupply(zeroIndex);
     }
 
-    /** * Retrieves an observable list of all filtered supplies.
-     * * @return An ObservableList of Supply objects.
+    /**
+     * Retrieves the observable list of supplies.
+     *
+     * @return The ObservableList of Supply.
      */
     @Override
     public ObservableList<Supply> getFilteredSupplyList() {
         return mediTrack.getSupplyList();
     }
 
-    /** * Retrieves supplies expiring within a given threshold of days, relative to the injected clock.
-     * * @param daysThreshold The number of days from today to check for expiration.
-     * @return A list of supplies sorted chronologically by expiry date.
+    /**
+     * Retrieves supplies expiring within a specified number of days.
+     *
+     * @param daysThreshold The day threshold.
+     * @return A sorted list of expiring supplies.
      */
     @Override
     public List<Supply> getExpiringSupplies(int daysThreshold) {
@@ -140,9 +155,11 @@ public class ModelManager implements Model {
                 .collect(Collectors.toList());
     }
 
-    /** * Retrieves supplies where the quantity is below the specified threshold.
-     * * @param quantityThreshold The threshold below which a supply is considered low stock.
-     * @return A list of supplies sorted in ascending order by quantity.
+    /**
+     * Retrieves supplies that fall below a specified quantity threshold.
+     *
+     * @param quantityThreshold The quantity threshold.
+     * @return A sorted list of low-stock supplies.
      */
     @Override
     public List<Supply> getLowStockSupplies(int quantityThreshold) {
@@ -152,38 +169,46 @@ public class ModelManager implements Model {
                 .collect(Collectors.toList());
     }
 
-    /** * Retrieves a read-only view of the MediTrack data for disk persistence.
-     * * @return A ReadOnlyMediTrack instance.
+    /**
+     * Retrieves the read-only view of the model data.
+     *
+     * @return The ReadOnlyMediTrack instance.
      */
     @Override
     public ReadOnlyMediTrack getMediTrack() {
         return mediTrack;
     }
 
-    /** * Retrieves an observable list of all personnel.
-     * * @return An ObservableList of Personnel objects.
+    /**
+     * Retrieves the observable list of personnel.
+     *
+     * @return The ObservableList of Personnel.
      */
     @Override
     public ObservableList<Personnel> getPersonnelList() {
         return mediTrack.getPersonnelList();
     }
 
-    /** * Adds a person to the roster with basic information.
-     * * @param name The name of the personnel.
-     * @param status The medical status of the personnel.
-     * @throws CommandException If a person with the same name already exists.
+    /**
+     * Adds a personnel member with basic details.
+     *
+     * @param name   The name.
+     * @param status The status.
+     * @throws CommandException If a duplicate exists.
      */
     @Override
     public void addPersonnel(String name, Status status) throws CommandException {
         addPersonnel(name, status, null, "");
     }
 
-    /** * Adds a person to the roster with extended medical information.
-     * * @param name The name of the personnel.
-     * @param status The medical status of the personnel.
-     * @param bloodGroup The blood group of the personnel.
-     * @param allergies Known allergies of the personnel.
-     * @throws CommandException If a person with the same name already exists.
+    /**
+     * Adds a personnel member with extended medical details.
+     *
+     * @param name       The name.
+     * @param status     The status.
+     * @param bloodGroup The blood group.
+     * @param allergies  The allergies.
+     * @throws CommandException If a duplicate exists.
      */
     @Override
     public void addPersonnel(String name, Status status, BloodGroup bloodGroup, String allergies)
@@ -197,39 +222,43 @@ public class ModelManager implements Model {
         getInternalPersonnelList().add(candidate);
     }
 
-    /** * Removes the personnel at the given 1-based index.
-     * * @param oneBasedIndex The 1-based index of the personnel to remove.
-     * @return The removed Personnel object.
-     * @throws CommandException If the index is out of bounds.
+    /**
+     * Deletes a personnel member by index.
+     *
+     * @param oneBasedIndex The 1-based index.
+     * @return The deleted Personnel.
+     * @throws CommandException If out of bounds.
      */
     @Override
     public Personnel deletePersonnel(int oneBasedIndex) throws CommandException {
         List<Personnel> list = getInternalPersonnelList();
         if (oneBasedIndex < 1 || oneBasedIndex > list.size()) {
-            throw new CommandException(
-                    String.format(MSG_OUT_OF_BOUNDS, oneBasedIndex, list.size()));
+            throw new CommandException(String.format(MSG_OUT_OF_BOUNDS, oneBasedIndex, list.size()));
         }
         return list.remove(oneBasedIndex - 1);
     }
 
-    /** * Updates the status for the personnel at the specified 1-based index.
-     * * @param oneBasedIndex The 1-based index of the personnel.
-     * @param newStatus The new medical status to apply.
-     * @throws CommandException If the index is out of bounds.
+    /**
+     * Sets the status of a personnel member by index.
+     *
+     * @param oneBasedIndex The 1-based index.
+     * @param newStatus     The new status.
+     * @throws CommandException If out of bounds.
      */
     @Override
     public void setPersonnelStatus(int oneBasedIndex, Status newStatus) throws CommandException {
         List<Personnel> list = getInternalPersonnelList();
         if (oneBasedIndex < 1 || oneBasedIndex > list.size()) {
-            throw new CommandException(
-                    String.format(MSG_OUT_OF_BOUNDS, oneBasedIndex, list.size()));
+            throw new CommandException(String.format(MSG_OUT_OF_BOUNDS, oneBasedIndex, list.size()));
         }
         list.get(oneBasedIndex - 1).setStatus(newStatus);
     }
 
-    /** * Retrieves personnel filtered by a specific status.
-     * * @param statusFilter The status to filter by (null returns all personnel).
-     * @return An unmodifiable list of matching personnel.
+    /**
+     * Retrieves personnel filtered by status.
+     *
+     * @param statusFilter The status to filter by, or null for all.
+     * @return The filtered list.
      */
     @Override
     public List<Personnel> getFilteredPersonnelList(Status statusFilter) {
@@ -241,63 +270,97 @@ public class ModelManager implements Model {
                 .collect(Collectors.toUnmodifiableList());
     }
 
-    /** * Retrieves the total number of personnel in the roster.
-     * * @return The integer count of personnel.
+    /**
+     * Retrieves the total count of personnel.
+     *
+     * @return The integer count.
      */
     @Override
     public int getPersonnelCount() {
         return getInternalPersonnelList().size();
     }
 
+    /**
+     * Internal helper to access the mutable personnel list.
+     *
+     * @return The mutable ObservableList.
+     */
     private ObservableList<Personnel> getInternalPersonnelList() {
         return mediTrack.getPersonnelObservable();
     }
 
-    // --- Duty Slot Management ---
-
+    /**
+     * Retrieves the current duty slots.
+     *
+     * @return A list of DutySlot objects.
+     */
     @Override
     public List<DutySlot> getDutySlots() {
         return mediTrack.getDutySlots();
     }
 
+    /**
+     * Adds a duty slot.
+     *
+     * @param slot The DutySlot to add.
+     */
     @Override
     public void addDutySlot(DutySlot slot) {
         mediTrack.getDutySlotsInternal().add(slot);
     }
 
+    /**
+     * Removes a duty slot by internal index.
+     *
+     * @param zeroBasedIndex The index to remove.
+     * @throws CommandException If out of bounds.
+     */
     @Override
     public void removeDutySlot(int zeroBasedIndex) throws CommandException {
         List<DutySlot> slots = mediTrack.getDutySlotsInternal();
         if (zeroBasedIndex < 0 || zeroBasedIndex >= slots.size()) {
-            throw new CommandException(
-                    String.format(MSG_SLOT_OUT_OF_BOUNDS, zeroBasedIndex, slots.size()));
+            throw new CommandException(String.format(MSG_SLOT_OUT_OF_BOUNDS, zeroBasedIndex, slots.size()));
         }
         slots.remove(zeroBasedIndex);
     }
 
+    /**
+     * Clears all duty slots.
+     */
     @Override
     public void clearDutySlots() {
         mediTrack.getDutySlotsInternal().clear();
     }
 
+    /**
+     * Clears duty slots for a specific date.
+     *
+     * @param date The date to clear.
+     */
     @Override
     public void clearDutySlotsForDate(LocalDate date) {
         mediTrack.getDutySlotsInternal().removeIf(slot -> slot.getDate().equals(date));
     }
 
+    /**
+     * Replaces a duty slot at a specific index.
+     *
+     * @param zeroBasedIndex The index to replace.
+     * @param newSlot        The new DutySlot.
+     * @throws CommandException If out of bounds.
+     */
     @Override
     public void replaceDutySlot(int zeroBasedIndex, DutySlot newSlot) throws CommandException {
         List<DutySlot> slots = mediTrack.getDutySlotsInternal();
         if (zeroBasedIndex < 0 || zeroBasedIndex >= slots.size()) {
-            throw new CommandException(
-                    String.format(MSG_SLOT_OUT_OF_BOUNDS, zeroBasedIndex, slots.size()));
+            throw new CommandException(String.format(MSG_SLOT_OUT_OF_BOUNDS, zeroBasedIndex, slots.size()));
         }
         slots.set(zeroBasedIndex, newSlot);
     }
 
     /**
-     * Scans the roster for expired medical statuses (MC/Light Duty) and
-     * automatically reverts those personnel to FIT status using the system/injected clock.
+     * Scans the roster for expired medical statuses and automatically reverts them to FIT.
+     * Utilizes the injected clock for accurate time checking.
      */
     public void cleanExpiredStatuses() {
         LocalDate today = LocalDate.now(clock);

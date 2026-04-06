@@ -20,10 +20,13 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import meditrack.commons.core.Constants;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Supply;
 
-/** Field medic: supplies expiring within threshold. */
+/**
+ * Displays supplies that are nearing their expiration date.
+ * Designed primarily for Field Medics and Logistics personnel.
+ */
 public class ExpiringSoonScreen extends VBox {
 
     private static final String BG              = "#121410";
@@ -40,7 +43,7 @@ public class ExpiringSoonScreen extends VBox {
     private static final String ERROR           = "#ffb4ab";
     private static final int    PAGE_SIZE       = 15;
 
-    private final ModelManager model;
+    private final Model model;
     private final TableView<Supply> table = new TableView<>();
     private final ObservableList<Supply> tableItems = FXCollections.observableArrayList();
     private final ObservableList<Supply> pageItems  = FXCollections.observableArrayList();
@@ -52,20 +55,24 @@ public class ExpiringSoonScreen extends VBox {
     private Button prevBtn;
     private Button nextBtn;
 
-    /** @param model used to read expiring supplies */
-    public ExpiringSoonScreen(ModelManager model) {
+    /**
+     * Constructs the Expiring Soon screen.
+     *
+     * @param model The application model providing live supply data.
+     */
+    public ExpiringSoonScreen(Model model) {
         this.model = model;
         buildUi();
         refresh();
     }
 
+    /** Assembles the layout components for this screen. */
     @SuppressWarnings("unchecked")
     private void buildUi() {
         setSpacing(0);
         setStyle("-fx-background-color: " + BG + ";");
         VBox.setVgrow(this, Priority.ALWAYS);
 
-        // Whenever tableItems changes (on refresh), reset to page 0 and repaginate
         tableItems.addListener((javafx.collections.ListChangeListener<Supply>) c -> {
             currentPage = 0;
             updatePage();
@@ -77,8 +84,7 @@ public class ExpiringSoonScreen extends VBox {
         getChildren().addAll(buildHeader(), tableSection, buildFooter());
     }
 
-    // Header
-
+    /** Builds the top title and threshold indicator. */
     private HBox buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -99,7 +105,6 @@ public class ExpiringSoonScreen extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Threshold badge
         Label badge = new Label("⚠  THRESHOLD: " + Constants.EXPIRY_THRESHOLD_DAYS + " DAYS");
         badge.setPadding(new Insets(6, 14, 6, 14));
         badge.setStyle("-fx-background-color: rgba(251,188,0,0.1); -fx-text-fill: " + WARNING + ";"
@@ -110,8 +115,7 @@ public class ExpiringSoonScreen extends VBox {
         return header;
     }
 
-    // Table
-
+    /** Configures the table layout and sets up column definitions. */
     @SuppressWarnings("unchecked")
     private VBox buildTableSection() {
         table.setItems(pageItems);
@@ -122,24 +126,22 @@ public class ExpiringSoonScreen extends VBox {
                 + " -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
         table.setPlaceholder(emptyPlaceholder());
 
-        // Style headers after skin loads
         table.skinProperty().addListener((obs, old, skin) -> {
             if (skin != null) Platform.runLater(() -> {
                 javafx.scene.Node hdrBg = table.lookup(".column-header-background");
                 if (hdrBg != null) hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
                 table.lookupAll(".column-header").forEach(n -> n.setStyle(
                         "-fx-background-color: transparent; -fx-border-color: transparent transparent "
-                        + OUTLINE_VAR + " transparent; -fx-border-width: 0 0 1 0;"));
+                                + OUTLINE_VAR + " transparent; -fx-border-width: 0 0 1 0;"));
                 table.lookupAll(".column-header .label").forEach(n -> n.setStyle(
                         "-fx-text-fill: " + OUTLINE + "; -fx-font-size: 10px; -fx-font-weight: bold;"
-                        + " -fx-font-family: 'Consolas', monospace;"));
+                                + " -fx-font-family: 'Consolas', monospace;"));
                 javafx.scene.Node filler = table.lookup(".filler");
                 if (filler != null) filler.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
             });
         });
 
-        // Row factory — all rows are warning/error by definition
-        table.setRowFactory(tv -> new javafx.scene.control.TableRow<Supply>() {
+        table.setRowFactory(tv -> new javafx.scene.control.TableRow<>() {
             @Override
             protected void updateItem(Supply item, boolean empty) {
                 super.updateItem(item, empty);
@@ -155,11 +157,10 @@ public class ExpiringSoonScreen extends VBox {
             }
         });
 
-        // Index column — shows global position across all pages
         TableColumn<Supply, Number> idxCol = new TableColumn<>("#");
         idxCol.setMinWidth(50); idxCol.setMaxWidth(50);
         idxCol.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(0));
-        idxCol.setCellFactory(col -> new TableCell<Supply, Number>() {
+        idxCol.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(Number v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
@@ -175,10 +176,9 @@ public class ExpiringSoonScreen extends VBox {
             }
         });
 
-        // Name column
         TableColumn<Supply, String> nameCol = new TableColumn<>("SUPPLY NAME");
         nameCol.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getName()));
-        nameCol.setCellFactory(col -> new TableCell<Supply, String>() {
+        nameCol.setCellFactory(col -> new TableCell<>() {
             private final Region dot = new Region();
             private final Label lbl = new Label();
             private final HBox box  = new HBox(10, dot, lbl);
@@ -198,11 +198,10 @@ public class ExpiringSoonScreen extends VBox {
             }
         });
 
-        // Quantity column
         TableColumn<Supply, Integer> qtyCol = new TableColumn<>("QUANTITY");
         qtyCol.setMinWidth(100); qtyCol.setMaxWidth(100);
         qtyCol.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-        qtyCol.setCellFactory(col -> new TableCell<Supply, Integer>() {
+        qtyCol.setCellFactory(col -> new TableCell<>() {
             private final Label badge = new Label();
             { badge.setPadding(new Insets(3, 10, 3, 10)); badge.setAlignment(Pos.CENTER); }
             @Override protected void updateItem(Integer v, boolean empty) {
@@ -226,11 +225,10 @@ public class ExpiringSoonScreen extends VBox {
             }
         });
 
-        // Expiry column
         TableColumn<Supply, LocalDate> expiryCol = new TableColumn<>("EXPIRY DATE");
         expiryCol.setMinWidth(160); expiryCol.setMaxWidth(200);
         expiryCol.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getExpiryDate()));
-        expiryCol.setCellFactory(col -> new TableCell<Supply, LocalDate>() {
+        expiryCol.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(LocalDate v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setText(null); setStyle(""); return; }
@@ -249,12 +247,11 @@ public class ExpiringSoonScreen extends VBox {
             }
         });
 
-        // Status column (read-only badge)
         TableColumn<Supply, String> statusCol = new TableColumn<>("STATUS");
         statusCol.setMinWidth(120); statusCol.setMaxWidth(140);
         statusCol.setCellValueFactory(c ->
                 new ReadOnlyObjectWrapper<>(isExpired(c.getValue()) ? "EXPIRED" : "EXPIRING"));
-        statusCol.setCellFactory(col -> new TableCell<Supply, String>() {
+        statusCol.setCellFactory(col -> new TableCell<>() {
             private final Label tag = new Label();
             { tag.setPadding(new Insets(3, 10, 3, 10)); }
             @Override protected void updateItem(String v, boolean empty) {
@@ -264,9 +261,9 @@ public class ExpiringSoonScreen extends VBox {
                 tag.setText(v);
                 tag.setStyle((expired
                         ? "-fx-text-fill: " + ERROR + "; -fx-border-color: rgba(255,180,171,0.3);"
-                          + " -fx-background-color: rgba(255,180,171,0.1);"
+                        + " -fx-background-color: rgba(255,180,171,0.1);"
                         : "-fx-text-fill: " + WARNING + "; -fx-border-color: rgba(251,188,0,0.3);"
-                          + " -fx-background-color: rgba(251,188,0,0.08);")
+                        + " -fx-background-color: rgba(251,188,0,0.08);")
                         + " -fx-border-width: 1; -fx-font-size: 9px; -fx-font-weight: bold;"
                         + " -fx-font-family: 'Consolas', monospace;");
                 setGraphic(tag);
@@ -284,8 +281,7 @@ public class ExpiringSoonScreen extends VBox {
         return section;
     }
 
-    // Footer
-
+    /** Builds the footer containing total counts and pagination navigation. */
     private HBox buildFooter() {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
@@ -330,8 +326,7 @@ public class ExpiringSoonScreen extends VBox {
         return footer;
     }
 
-    // Pagination
-
+    /** Recalculates the active items to display based on the current page. */
     private void updatePage() {
         int from = currentPage * PAGE_SIZE;
         int size = tableItems.size();
@@ -340,6 +335,7 @@ public class ExpiringSoonScreen extends VBox {
         updatePaginationControls();
     }
 
+    /** Enables or disables pagination buttons. */
     private void updatePaginationControls() {
         int totalPages = Math.max(1, (int) Math.ceil((double) tableItems.size() / PAGE_SIZE));
         if (pageLabel != null) pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
@@ -347,6 +343,7 @@ public class ExpiringSoonScreen extends VBox {
         if (nextBtn   != null) nextBtn.setDisable(currentPage >= totalPages - 1);
     }
 
+    /** Creates a styled button for pagination navigation. */
     private Button pageNavBtn(String text) {
         String base  = "-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + SECONDARY + ";"
                 + " -fx-font-size: 10px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
@@ -361,9 +358,10 @@ public class ExpiringSoonScreen extends VBox {
         return btn;
     }
 
-    // Refresh
-
-    /** Reloads data from the model. Call on every show. */
+    /**
+     * Refreshes the screen's data directly from the abstract model.
+     * Guaranteed to use the live system clock.
+     */
     public void refresh() {
         List<Supply> expiring = model.getExpiringSupplies(Constants.EXPIRY_THRESHOLD_DAYS);
 
@@ -374,6 +372,7 @@ public class ExpiringSoonScreen extends VBox {
         updateFooterStats(expiring);
     }
 
+    /** Recalculates footer statistics. */
     private void updateFooterStats(List<Supply> items) {
         long expired  = items.stream().filter(this::isExpired).count();
         long upcoming = items.size() - expired;
@@ -381,12 +380,12 @@ public class ExpiringSoonScreen extends VBox {
         if (expiredLabel != null) expiredLabel.setText("ALREADY EXPIRED: " + expired);
     }
 
-    // Helpers
-
+    /** Checks if a supply has already passed its expiration date. */
     private boolean isExpired(Supply s) {
         return s.getExpiryDate().isBefore(LocalDate.now());
     }
 
+    /** Returns a generic empty state placeholder label. */
     private Label emptyPlaceholder() {
         Label lbl = new Label("ALL SUPPLIES WITHIN TOLERANCE");
         lbl.setStyle("-fx-text-fill: " + PRIMARY + "; -fx-font-size: 11px; -fx-font-weight: bold;"

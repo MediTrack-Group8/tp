@@ -2,37 +2,23 @@ package meditrack.model;
 
 /**
  * Manages the active user session within the application.
- * Implements the Singleton pattern to ensure a single, globally accessible
- * session state representing the currently logged-in user's role.
+ * Note: Refactored away from the Singleton pattern to improve testability and reduce hidden global state.
  */
 public class Session {
 
-    private static Session instance;
     private Role currentRole;
 
     /**
-     * Private constructor to prevent external instantiation.
+     * Constructs a new Session instance.
+     * Handled natively by the ModelManager to ensure only one session exists per application lifecycle.
      */
-    private Session() {
-    }
-
-    /**
-     * Retrieves the singleton instance of the Session.
-     * Lazily initializes the instance on the first call.
-     *
-     * @return The active, global Session instance.
-     */
-    public static Session getInstance() {
-        if (instance == null) {
-            instance = new Session();
-        }
-        return instance;
+    public Session() {
     }
 
     /**
      * Assigns the active operational role to the current session upon successful login.
      *
-     * @param role The Role to assign to the user.
+     * @param role The Role to assign to the current user.
      */
     public void setRole(Role role) {
         this.currentRole = role;
@@ -41,14 +27,14 @@ public class Session {
     /**
      * Retrieves the role associated with the current session.
      *
-     * @return The active Role, or null if no user is logged in.
+     * @return The active Role, or null if no user is currently logged in.
      */
     public Role getRole() {
         return currentRole;
     }
 
     /**
-     * Clears the current session data, effectively logging the user out and removing permissions.
+     * Clears the current session data, effectively logging the user out and revoking permissions.
      */
     public void clear() {
         this.currentRole = null;

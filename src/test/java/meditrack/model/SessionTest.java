@@ -2,35 +2,30 @@ package meditrack.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * JUnit tests for the Session manager, ensuring Singleton integrity and state clearing.
+ * JUnit tests for the Session POJO class.
+ * Validates that role state persists correctly without relying on global Singletons.
  */
 public class SessionTest {
 
+    private Session session;
+
     @BeforeEach
     public void setUp() {
-        // Ensure a clean slate before each test
-        Session.getInstance().clear();
+        session = new Session();
     }
 
     @Test
-    public void getInstance_returnsSameSingletonInstance() {
-        Session firstCall = Session.getInstance();
-        Session secondCall = Session.getInstance();
-
-        // assertSame checks if they point to the exact same object in memory
-        assertSame(firstCall, secondCall);
+    public void constructor_createsCleanSession() {
+        assertNull(session.getRole(), "A newly created session should not have an active role.");
     }
 
     @Test
     public void setRoleAndGetRole_storesAndRetrievesCorrectly() {
-        Session session = Session.getInstance();
-
         session.setRole(Role.MEDICAL_OFFICER);
         assertEquals(Role.MEDICAL_OFFICER, session.getRole());
 
@@ -41,13 +36,10 @@ public class SessionTest {
 
     @Test
     public void clear_resetsRoleToNull() {
-        Session session = Session.getInstance();
         session.setRole(Role.FIELD_MEDIC);
 
-        // Act
         session.clear();
 
-        // Assert
         assertNull(session.getRole(), "Session role should be null after clearing.");
     }
 }

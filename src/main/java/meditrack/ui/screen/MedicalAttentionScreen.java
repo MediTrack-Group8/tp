@@ -2,7 +2,6 @@ package meditrack.ui.screen;
 
 import java.util.List;
 import java.util.Comparator;
-import java.util.stream.Collectors;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -23,32 +22,32 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Personnel;
 import meditrack.model.Status;
 
 /**
- * Medical Officer screen showing all personnel requiring medical attention
- * (MC, LIGHT_DUTY, CASUALTY, PENDING).
+ * Medical Officer screen showing all personnel requiring medical attention.
+ * Filters the roster to display only MC, LIGHT_DUTY, CASUALTY, and PENDING statuses.
  */
 public class MedicalAttentionScreen extends VBox {
 
-    private static final String BG = "#121410";
-    private static final String SURFACE_LOW = "#1a1c18";
-    private static final String SURFACE = "#1e201c";
-    private static final String SURFACE_HIGH = "#292b26";
+    private static final String BG              = "#121410";
+    private static final String SURFACE_LOW     = "#1a1c18";
+    private static final String SURFACE         = "#1e201c";
+    private static final String SURFACE_HIGH    = "#292b26";
     private static final String SURFACE_HIGHEST = "#333531";
-    private static final String SURFACE_BRIGHT = "#383a35";
-    private static final String PRIMARY = "#b6d088";
-    private static final String OUTLINE = "#8f9284";
-    private static final String OUTLINE_VAR = "#45483c";
-    private static final String ON_SURFACE = "#e3e3dc";
-    private static final String SECONDARY = "#c8c6c6";
-    private static final String WARNING = "#fbbc00";
-    private static final String ERROR = "#ffb4ab";
-    private static final int PAGE_SIZE = 15;
+    private static final String SURFACE_BRIGHT  = "#383a35";
+    private static final String PRIMARY         = "#b6d088";
+    private static final String OUTLINE         = "#8f9284";
+    private static final String OUTLINE_VAR     = "#45483c";
+    private static final String ON_SURFACE      = "#e3e3dc";
+    private static final String SECONDARY       = "#c8c6c6";
+    private static final String WARNING         = "#fbbc00";
+    private static final String ERROR           = "#ffb4ab";
+    private static final int    PAGE_SIZE       = 15;
 
-    private final ModelManager model;
+    private final Model model;
     private final ObservableList<Personnel> tableData = FXCollections.observableArrayList();
     private final FilteredList<Personnel> filteredData = new FilteredList<>(tableData, p -> true);
     private final SortedList<Personnel> sortedData = new SortedList<>(filteredData,
@@ -68,15 +67,17 @@ public class MedicalAttentionScreen extends VBox {
 
     /**
      * Constructs the Medical Attention monitoring screen.
+     * Decoupled to rely entirely on the Model interface.
      *
-     * @param model the data model managing personnel records
+     * @param model The application data model used to retrieve and track personnel.
      */
-    public MedicalAttentionScreen(ModelManager model) {
+    public MedicalAttentionScreen(Model model) {
         this.model = model;
         buildUi();
         refresh();
     }
 
+    /** Assembles the layout components for this screen. */
     private void buildUi() {
         setSpacing(0);
         setStyle("-fx-background-color: " + BG + ";");
@@ -93,8 +94,7 @@ public class MedicalAttentionScreen extends VBox {
         getChildren().addAll(buildHeader(), tableSection, buildFooter());
     }
 
-    // Header
-
+    /** Builds the top title and search bar. */
     private HBox buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -139,8 +139,7 @@ public class MedicalAttentionScreen extends VBox {
         return header;
     }
 
-    // Table
-
+    /** Configures the TableView, its styles, and its columns. */
     @SuppressWarnings("unchecked")
     private VBox buildTableSection() {
         table.setItems(pageItems);
@@ -169,7 +168,7 @@ public class MedicalAttentionScreen extends VBox {
                 });
         });
 
-        table.setRowFactory(tv -> new TableRow<Personnel>() {
+        table.setRowFactory(tv -> new TableRow<>() {
             @Override
             protected void updateItem(Personnel item, boolean empty) {
                 super.updateItem(item, empty);
@@ -196,6 +195,7 @@ public class MedicalAttentionScreen extends VBox {
         return section;
     }
 
+    /** Builds the numbered index column. */
     private TableColumn<Personnel, String> buildIndexColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("#");
         col.setMinWidth(50);
@@ -204,7 +204,7 @@ public class MedicalAttentionScreen extends VBox {
             int pageIdx = cd.getTableView().getItems().indexOf(cd.getValue());
             return new SimpleStringProperty(String.valueOf(currentPage * PAGE_SIZE + pageIdx + 1));
         });
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             @Override
             protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
@@ -227,10 +227,11 @@ public class MedicalAttentionScreen extends VBox {
         return col;
     }
 
+    /** Builds the formatted personnel name column. */
     private TableColumn<Personnel, String> buildNameColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("NAME");
         col.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getName()));
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Region dot = new Region();
             private final Label lbl = new Label();
             private final HBox box = new HBox(10, dot, lbl);
@@ -265,16 +266,15 @@ public class MedicalAttentionScreen extends VBox {
         return col;
     }
 
+    /** Builds the status badge column. */
     private TableColumn<Personnel, String> buildStatusColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("STATUS");
         col.setMinWidth(160);
         col.setMaxWidth(200);
         col.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getStatus().name()));
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label badge = new Label();
-            {
-                badge.setPadding(new Insets(3, 10, 3, 10));
-            }
+            { badge.setPadding(new Insets(3, 10, 3, 10)); }
 
             @Override
             protected void updateItem(String v, boolean empty) {
@@ -285,11 +285,7 @@ public class MedicalAttentionScreen extends VBox {
                     return;
                 }
                 Status status;
-                try {
-                    status = Status.valueOf(v);
-                } catch (IllegalArgumentException e) {
-                    status = Status.PENDING;
-                }
+                try { status = Status.valueOf(v); } catch (IllegalArgumentException e) { status = Status.PENDING; }
                 String color = statusColor(status);
                 String rgba40 = hexToRgba(color, 0.4);
                 String rgba08 = hexToRgba(color, 0.08);
@@ -305,8 +301,7 @@ public class MedicalAttentionScreen extends VBox {
         return col;
     }
 
-    // Footer
-
+    /** Builds the bottom footer bar containing pagination and summary stats. */
     private HBox buildFooter() {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
@@ -349,8 +344,7 @@ public class MedicalAttentionScreen extends VBox {
         return footer;
     }
 
-    // Pagination
-
+    /** Updates the current page view of the table based on pagination state. */
     private void updatePage() {
         int from = currentPage * PAGE_SIZE;
         int size = sortedData.size();
@@ -359,16 +353,15 @@ public class MedicalAttentionScreen extends VBox {
         updatePaginationControls();
     }
 
+    /** Enables or disables pagination controls based on the current page. */
     private void updatePaginationControls() {
         int totalPages = Math.max(1, (int) Math.ceil((double) sortedData.size() / PAGE_SIZE));
-        if (pageLabel != null)
-            pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
-        if (prevBtn != null)
-            prevBtn.setDisable(currentPage == 0);
-        if (nextBtn != null)
-            nextBtn.setDisable(currentPage >= totalPages - 1);
+        if (pageLabel != null) pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
+        if (prevBtn != null) prevBtn.setDisable(currentPage == 0);
+        if (nextBtn != null) nextBtn.setDisable(currentPage >= totalPages - 1);
     }
 
+    /** Constructs a stylized pagination button. */
     private Button pageNavBtn(String text) {
         String base = "-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + SECONDARY + ";"
                 + " -fx-font-size: 10px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
@@ -383,10 +376,9 @@ public class MedicalAttentionScreen extends VBox {
         return btn;
     }
 
-    // Refresh
-
     /**
      * Reloads the table with the latest personnel requiring medical attention.
+     * Evaluates data natively from the assigned Model interface.
      */
     public void refresh() {
         List<Personnel> all = model.getFilteredPersonnelList(null);
@@ -395,27 +387,23 @@ public class MedicalAttentionScreen extends VBox {
                         || p.getStatus() == Status.CASUALTY
                         || p.getStatus() == Status.MC
                         || p.getStatus() == Status.LIGHT_DUTY)
-                .collect(Collectors.toList());
+                .toList();
         tableData.setAll(medicalCases);
         updateFooterStats(medicalCases);
     }
 
+    /** Recalculates footer statistics based on the active dataset. */
     private void updateFooterStats(List<Personnel> items) {
         long mc = items.stream().filter(p -> p.getStatus() == Status.MC).count();
         long ld = items.stream().filter(p -> p.getStatus() == Status.LIGHT_DUTY).count();
         long cas = items.stream().filter(p -> p.getStatus() == Status.CASUALTY).count();
-        if (totalLabel != null)
-            totalLabel.setText("TOTAL: " + items.size());
-        if (mcLabel != null)
-            mcLabel.setText("MC: " + mc);
-        if (ldLabel != null)
-            ldLabel.setText("LIGHT DUTY: " + ld);
-        if (casLabel != null)
-            casLabel.setText("CASUALTY: " + cas);
+        if (totalLabel != null) totalLabel.setText("TOTAL: " + items.size());
+        if (mcLabel != null) mcLabel.setText("MC: " + mc);
+        if (ldLabel != null) ldLabel.setText("LIGHT DUTY: " + ld);
+        if (casLabel != null) casLabel.setText("CASUALTY: " + cas);
     }
 
-    // Helpers
-
+    /** Determines row background highlight color based on severity. */
     private String rowBackground(Status status) {
         return switch (status) {
             case CASUALTY -> "rgba(147,0,10,0.15)";
@@ -424,16 +412,17 @@ public class MedicalAttentionScreen extends VBox {
         };
     }
 
+    /** Determines CSS color codes for corresponding statuses. */
     private String statusColor(Status status) {
         return switch (status) {
             case FIT -> PRIMARY;
-            case LIGHT_DUTY -> WARNING;
-            case MC -> WARNING;
+            case LIGHT_DUTY, MC -> WARNING;
             case CASUALTY -> ERROR;
             case PENDING -> OUTLINE;
         };
     }
 
+    /** Ranks priority for sorting items natively in the table. */
     private int getStatusPriority(Status status) {
         return switch (status) {
             case CASUALTY -> 1;
@@ -444,6 +433,7 @@ public class MedicalAttentionScreen extends VBox {
         };
     }
 
+    /** Creates consistent UI stat labels. */
     private Label statLabel(String text, String color) {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 10px; -fx-font-weight: bold;"
@@ -451,6 +441,7 @@ public class MedicalAttentionScreen extends VBox {
         return lbl;
     }
 
+    /** Translates hex strings to usable RGBA rules for JavaFX. */
     private static String hexToRgba(String hex, double alpha) {
         int r = Integer.parseInt(hex.substring(1, 3), 16);
         int g = Integer.parseInt(hex.substring(3, 5), 16);
@@ -458,6 +449,7 @@ public class MedicalAttentionScreen extends VBox {
         return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
     }
 
+    /** Constructs placeholder text when no items require attention. */
     private Label buildEmptyPlaceholder() {
         Label lbl = new Label("ALL PERSONNEL ARE FIT — NO MEDICAL ATTENTION REQUIRED");
         lbl.setStyle("-fx-text-fill: " + PRIMARY + "; -fx-font-size: 11px; -fx-font-weight: bold;"

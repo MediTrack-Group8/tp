@@ -1,12 +1,14 @@
 package meditrack.ui.screen;
 
-import java.util.Comparator;
+import java.time.LocalDate;
 import java.util.List;
-
+import java.util.Comparator;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -20,11 +22,11 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import meditrack.commons.core.Constants;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Supply;
 
 /**
- * Screen displaying supplies that have fallen below the low stock threshold.
+ * Screen displaying supplies that have fallen below the predefined low stock threshold.
  * The list is automatically sorted alphabetically by supply name to group batches together.
  */
 public class LowSupplyScreen extends VBox {
@@ -43,7 +45,7 @@ public class LowSupplyScreen extends VBox {
     private static final String ERROR           = "#ffb4ab";
     private static final int    PAGE_SIZE       = 15;
 
-    private final ModelManager model;
+    private final Model model;
     private final TableView<Supply> table = new TableView<>();
     private final ObservableList<Supply> tableItems = FXCollections.observableArrayList();
     private final ObservableList<Supply> pageItems  = FXCollections.observableArrayList();
@@ -55,18 +57,19 @@ public class LowSupplyScreen extends VBox {
     private Button prevBtn;
     private Button nextBtn;
 
-    /** * Constructs the Low Supply screen.
-     * * @param model the data model used to read low stock supplies.
+    /**
+     * Constructs the Low Supply reporting screen.
+     * Decoupled to rely entirely on the Model interface.
+     *
+     * @param model The application model providing live supply data.
      */
-    public LowSupplyScreen(ModelManager model) {
+    public LowSupplyScreen(Model model) {
         this.model = model;
         buildUi();
         refresh();
     }
 
-    /**
-     * Initializes and arranges the root UI components for this screen.
-     */
+    /** Initializes and arranges the root UI components for this screen. */
     @SuppressWarnings("unchecked")
     private void buildUi() {
         setSpacing(0);
@@ -84,10 +87,7 @@ public class LowSupplyScreen extends VBox {
         getChildren().addAll(buildHeader(), tableSection, buildFooter());
     }
 
-    /**
-     * Builds the top header bar containing the title and threshold badge.
-     * * @return HBox containing the styled header.
-     */
+    /** Builds the top header bar containing the title and threshold badge. */
     private HBox buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -118,10 +118,7 @@ public class LowSupplyScreen extends VBox {
         return header;
     }
 
-    /**
-     * Configures the TableView, its columns, and custom cell rendering.
-     * * @return VBox wrapping the configured table.
-     */
+    /** Configures the TableView, its columns, and custom cell rendering. */
     @SuppressWarnings("unchecked")
     private VBox buildTableSection() {
         table.setItems(pageItems);
@@ -147,7 +144,7 @@ public class LowSupplyScreen extends VBox {
             });
         });
 
-        table.setRowFactory(tv -> new javafx.scene.control.TableRow<Supply>() {
+        table.setRowFactory(tv -> new javafx.scene.control.TableRow<>() {
             @Override
             protected void updateItem(Supply item, boolean empty) {
                 super.updateItem(item, empty);
@@ -178,12 +175,12 @@ public class LowSupplyScreen extends VBox {
         return section;
     }
 
-    /** Creates the index column. */
+    /** Creates the numerical index column. */
     private TableColumn<Supply, Number> buildIndexColumn() {
         TableColumn<Supply, Number> col = new TableColumn<>("#");
         col.setMinWidth(50); col.setMaxWidth(50);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(0));
-        col.setCellFactory(c -> new TableCell<Supply, Number>() {
+        col.setCellFactory(c -> new TableCell<>() {
             @Override protected void updateItem(Number v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
@@ -205,7 +202,7 @@ public class LowSupplyScreen extends VBox {
     private TableColumn<Supply, String> buildNameColumn() {
         TableColumn<Supply, String> col = new TableColumn<>("SUPPLY NAME");
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getName()));
-        col.setCellFactory(c -> new TableCell<Supply, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Region dot = new Region();
             private final Label lbl = new Label();
             private final HBox box  = new HBox(10, dot, lbl);
@@ -232,7 +229,7 @@ public class LowSupplyScreen extends VBox {
         TableColumn<Supply, Integer> col = new TableColumn<>("QUANTITY");
         col.setMinWidth(120); col.setMaxWidth(160);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-        col.setCellFactory(c -> new TableCell<Supply, Integer>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label badge = new Label();
             { badge.setPadding(new Insets(3, 10, 3, 10)); badge.setAlignment(Pos.CENTER); }
             @Override protected void updateItem(Integer v, boolean empty) {
@@ -264,7 +261,7 @@ public class LowSupplyScreen extends VBox {
         col.setMinWidth(120); col.setMaxWidth(160);
         col.setCellValueFactory(c ->
                 new ReadOnlyObjectWrapper<>(isCritical(c.getValue()) ? "CRITICAL" : "LOW STOCK"));
-        col.setCellFactory(c -> new TableCell<Supply, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label tag = new Label();
             { tag.setPadding(new Insets(3, 10, 3, 10)); }
             @Override protected void updateItem(String v, boolean empty) {
@@ -286,10 +283,7 @@ public class LowSupplyScreen extends VBox {
         return col;
     }
 
-    /**
-     * Builds the footer for pagination and statistical summaries.
-     * * @return HBox containing the footer components.
-     */
+    /** Builds the footer for pagination and statistical summaries. */
     private HBox buildFooter() {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
@@ -366,8 +360,9 @@ public class LowSupplyScreen extends VBox {
         return btn;
     }
 
-    /** * Reloads data from the model. Must be called when the screen is shown
-     * or when underlying inventory changes.
+    /**
+     * Reloads data from the model.
+     * Evaluates live data natively against the assigned Model interface.
      */
     public void refresh() {
         List<Supply> lowStock = model.getLowStockSupplies(Constants.LOW_STOCK_THRESHOLD_QUANTITY);

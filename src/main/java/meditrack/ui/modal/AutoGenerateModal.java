@@ -27,7 +27,10 @@ import javafx.stage.Window;
 import meditrack.logic.RosterAutoGenerator;
 import meditrack.model.DutyType;
 
-/** Auto-generate duty roster modal matching the app design system. */
+/**
+ * A modal dialog that prompts the user to configure settings before automatically
+ * generating a duty roster via the algorithmic generator.
+ */
 public class AutoGenerateModal {
 
     private static final String SURFACE_LOW  = "#1a1c18";
@@ -40,16 +43,16 @@ public class AutoGenerateModal {
     private static final String SECONDARY    = "#c8c6c6";
     private static final String ERROR        = "#ffb4ab";
 
-    /** Result returned to the caller on confirmation. */
+    /** Encapsulates the configuration options chosen by the user in the modal. */
     public record GenerateConfig(List<DutyType> selectedTypes, Map<DutyType, Integer> durations) { }
 
     /**
-     * Shows the auto-generate modal.
+     * Displays the auto-generate configuration modal.
      *
-     * @param selectedDate   date to generate for
-     * @param fitCount       number of FIT personnel available
-     * @param owner          parent window
-     * @param onSuccess      callback with the selected config
+     * @param selectedDate The calendar date to generate the roster for.
+     * @param fitCount     The number of eligible FIT personnel available.
+     * @param owner        The parent window to block.
+     * @param onSuccess    A callback function returning the user's generation configuration.
      */
     public static void show(LocalDate selectedDate, int fitCount,
                             Window owner, Consumer<GenerateConfig> onSuccess) {
@@ -133,7 +136,7 @@ public class AutoGenerateModal {
                 + " -fx-border-color: " + PRIMARY_CONT + "; -fx-border-width: 0 0 0 2;");
         Label coverageLbl = new Label(
                 "Guard Duty & Patrol: 00:00\u201300:00 (24h window)\n"
-                + "All other types:     08:00\u201320:00 (12h window)");
+                        + "All other types:     08:00\u201320:00 (12h window)");
         coverageLbl.setStyle("-fx-text-fill: rgba(227,227,220,0.55); -fx-font-size: 9px;"
                 + " -fx-font-family: 'Consolas', monospace;");
         coverageBar.getChildren().add(coverageLbl);
@@ -145,7 +148,7 @@ public class AutoGenerateModal {
                 + " -fx-border-color: transparent;");
         VBox.setVgrow(scrollBody, javafx.scene.layout.Priority.ALWAYS);
 
-        // Footer
+        // Footer Action
         HBox footer = buildFooter(stage, "GENERATE ROSTER  \u2192", () -> {
             errorLabel.setText("");
             boolean anySelected = typeBoxes.stream().anyMatch(CheckBox::isSelected);
@@ -186,8 +189,7 @@ public class AutoGenerateModal {
         stage.showAndWait();
     }
 
-    // Helpers
-
+    /** Creates the draggable title bar for the modal window. */
     private static HBox buildTitleBar(Stage stage) {
         HBox titleBar = new HBox(10);
         titleBar.setAlignment(Pos.CENTER_LEFT);
@@ -221,6 +223,7 @@ public class AutoGenerateModal {
         return titleBar;
     }
 
+    /** Constructs the footer pane containing the submission buttons. */
     private static HBox buildFooter(Stage stage, String confirmText, Runnable onConfirm) {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_RIGHT);
@@ -246,6 +249,7 @@ public class AutoGenerateModal {
         return footer;
     }
 
+    /** Creates a standardized UI badge displaying system context information. */
     private static VBox infoBadge(String label, String value, String valueColor) {
         Label hdr = new Label(label);
         hdr.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 9px; -fx-font-weight: bold;"
@@ -260,6 +264,7 @@ public class AutoGenerateModal {
         return box;
     }
 
+    /** Standardizes formatting for sub-headers. */
     private static Label sectionHeader(String text) {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 9px; -fx-font-weight: bold;"
@@ -267,6 +272,7 @@ public class AutoGenerateModal {
         return lbl;
     }
 
+    /** Creates small, inline text fields used for inputting time limits. */
     private static TextField styledSmallField(String value) {
         TextField field = new TextField(value);
         field.setPrefWidth(70);

@@ -26,30 +26,28 @@ import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.logic.parser.CommandType;
 import meditrack.logic.parser.Parser;
 import meditrack.logic.parser.exceptions.ParseException;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Supply;
 
 /**
- * Resupply Report screen generates and displays flagged supply items.
+ * Resupply Report screen generates and displays supply items flagged for restock.
  */
 public class ResupplyReportScreen extends VBox {
 
-    private static final String BG             = "#121410";
-    private static final String SURFACE_LOW    = "#1a1c18";
-    private static final String SURFACE_HIGH   = "#292b26";
+    private static final String BG              = "#121410";
+    private static final String SURFACE_LOW     = "#1a1c18";
+    private static final String SURFACE_HIGH    = "#292b26";
     private static final String SURFACE_HIGHEST = "#333531";
-    private static final String SURFACE_BRIGHT = "#383a35";
-    private static final String PRIMARY        = "#b6d088";
-    private static final String PRIMARY_CONT   = "#556b2f";
-    private static final String ON_PRIMARY     = "#233600";
-    private static final String OUTLINE        = "#8f9284";
-    private static final String OUTLINE_VAR    = "#45483c";
-    private static final String ON_SURFACE     = "#e3e3dc";
-    private static final String SECONDARY      = "#c8c6c6";
-    private static final String WARNING        = "#fbbc00";
-    private static final String ERROR          = "#ffb4ab";
+    private static final String SURFACE_BRIGHT  = "#383a35";
+    private static final String WARNING         = "#fbbc00";
+    private static final String ERROR           = "#ffb4ab";
+    private static final String PRIMARY         = "#b6d088";
+    private static final String OUTLINE         = "#8f9284";
+    private static final String OUTLINE_VAR     = "#45483c";
+    private static final String ON_SURFACE      = "#e3e3dc";
+    private static final String SECONDARY       = "#c8c6c6";
 
-    private final ModelManager model;
+    private final Model model;
     private final Logic logic;
 
     private final TableView<ReportRow> reportTable = new TableView<>();
@@ -57,15 +55,19 @@ public class ResupplyReportScreen extends VBox {
     private Label flaggedCountLabel;
 
     /**
-     * @param model for validation and flagged-item queries
-     * @param logic runs the generate report command
+     * Constructs the Resupply Report screen.
+     * Decoupled to accept Model instead of ModelManager.
+     *
+     * @param model For validation and flagged-item queries.
+     * @param logic Runs the generate report command.
      */
-    public ResupplyReportScreen(ModelManager model, Logic logic) {
+    public ResupplyReportScreen(Model model, Logic logic) {
         this.model = model;
         this.logic = logic;
         buildUi();
     }
 
+    /** Assembles the layout components for this screen. */
     private void buildUi() {
         setSpacing(0);
         setStyle("-fx-background-color: " + BG + ";");
@@ -79,8 +81,7 @@ public class ResupplyReportScreen extends VBox {
         handleGenerateReport();
     }
 
-    // Header
-
+    /** Builds the top title bar and feedback label. */
     private HBox buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -104,8 +105,7 @@ public class ResupplyReportScreen extends VBox {
         return header;
     }
 
-    // Table
-
+    /** Configures the TableView, its columns, and custom cell rendering. */
     @SuppressWarnings("unchecked")
     private VBox buildTableSection() {
         reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -119,31 +119,24 @@ public class ResupplyReportScreen extends VBox {
             if (skin != null) {
                 Platform.runLater(() -> {
                     javafx.scene.Node hdrBg = reportTable.lookup(".column-header-background");
-                    if (hdrBg != null) {
-                        hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
-                    }
+                    if (hdrBg != null) hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
                     reportTable.lookupAll(".column-header").forEach(n -> n.setStyle(
                             "-fx-background-color: transparent; -fx-border-color: transparent transparent "
                                     + OUTLINE_VAR + " transparent; -fx-border-width: 0 0 1 0;"));
                     reportTable.lookupAll(".column-header .label").forEach(n -> n.setStyle(
                             "-fx-text-fill: " + OUTLINE + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                                     + " -fx-font-family: 'Consolas', monospace;"));
-                    javafx.scene.Node filler = reportTable.lookup(".filler");
-                    if (filler != null) {
-                        filler.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
-                    }
                 });
             }
         });
 
-        reportTable.setRowFactory(tv -> new javafx.scene.control.TableRow<ReportRow>() {
+        reportTable.setRowFactory(tv -> new javafx.scene.control.TableRow<>() {
             @Override
             protected void updateItem(ReportRow item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setStyle("-fx-background-color: transparent;");
-                    setOnMouseEntered(null);
-                    setOnMouseExited(null);
+                    setOnMouseEntered(null); setOnMouseExited(null);
                     return;
                 }
                 String bg = isExpired(item) ? "rgba(147,0,10,0.15)" : "rgba(251,188,0,0.04)";
@@ -168,14 +161,14 @@ public class ResupplyReportScreen extends VBox {
         return section;
     }
 
+    /** Creates the numerical index column. */
     private TableColumn<ReportRow, Number> buildIndexColumn() {
         TableColumn<ReportRow, Number> col = new TableColumn<>("#");
         col.setMinWidth(50);
         col.setMaxWidth(50);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(0));
-        col.setCellFactory(c -> new TableCell<ReportRow, Number>() {
-            @Override
-            protected void updateItem(Number v, boolean empty) {
+        col.setCellFactory(c -> new TableCell<>() {
+            @Override protected void updateItem(Number v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                     setText(null); setStyle(""); return;
@@ -184,7 +177,6 @@ public class ResupplyReportScreen extends VBox {
                 if (idx < 0 || idx >= getTableView().getItems().size()) { setText(null); return; }
 
                 int globalIdx = idx + 1;
-
                 ReportRow row = getTableView().getItems().get(idx);
                 boolean isError = row.getReason().contains("CRITICAL") || row.getReason().contains("EXPIRED");
 
@@ -197,21 +189,17 @@ public class ResupplyReportScreen extends VBox {
         return col;
     }
 
+    /** Creates the supply name column. */
     private TableColumn<ReportRow, String> buildNameColumn() {
         TableColumn<ReportRow, String> col = new TableColumn<>("SUPPLY NAME");
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getName()));
-        col.setCellFactory(c -> new TableCell<ReportRow, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Region dot = new Region();
             private final Label lbl = new Label();
             private final HBox box = new HBox(10, dot, lbl);
-            {
-                dot.setMinSize(8, 8);
-                dot.setMaxSize(8, 8);
-                box.setAlignment(Pos.CENTER_LEFT);
-            }
+            { dot.setMinSize(8, 8); dot.setMaxSize(8, 8); box.setAlignment(Pos.CENTER_LEFT); }
 
-            @Override
-            protected void updateItem(String v, boolean empty) {
+            @Override protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setGraphic(null); setStyle(""); return; }
                 int idx = getIndex();
@@ -232,17 +220,17 @@ public class ResupplyReportScreen extends VBox {
         return col;
     }
 
+    /** Creates the numerical quantity column. */
     private TableColumn<ReportRow, Integer> buildQuantityColumn() {
         TableColumn<ReportRow, Integer> col = new TableColumn<>("QUANTITY");
         col.setMinWidth(100);
         col.setMaxWidth(120);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-        col.setCellFactory(c -> new TableCell<ReportRow, Integer>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label badge = new Label();
             { badge.setPadding(new Insets(3, 10, 3, 10)); badge.setAlignment(Pos.CENTER); }
 
-            @Override
-            protected void updateItem(Integer v, boolean empty) {
+            @Override protected void updateItem(Integer v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setGraphic(null); setStyle(""); return; }
                 int idx = getIndex();
@@ -274,14 +262,14 @@ public class ResupplyReportScreen extends VBox {
         return col;
     }
 
+    /** Creates the supply expiry date column. */
     private TableColumn<ReportRow, LocalDate> buildExpiryColumn() {
         TableColumn<ReportRow, LocalDate> col = new TableColumn<>("EXPIRY DATE");
         col.setMinWidth(150);
         col.setMaxWidth(170);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getExpiryDate()));
-        col.setCellFactory(c -> new TableCell<ReportRow, LocalDate>() {
-            @Override
-            protected void updateItem(LocalDate v, boolean empty) {
+        col.setCellFactory(c -> new TableCell<>() {
+            @Override protected void updateItem(LocalDate v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setText(null); setStyle(""); return; }
                 int idx = getIndex();
@@ -301,15 +289,15 @@ public class ResupplyReportScreen extends VBox {
         return col;
     }
 
+    /** Creates the reason flagged column. */
     private TableColumn<ReportRow, String> buildReasonColumn() {
         TableColumn<ReportRow, String> col = new TableColumn<>("REASON FLAGGED");
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getReason()));
-        col.setCellFactory(c -> new TableCell<ReportRow, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label badge = new Label();
             { badge.setPadding(new Insets(3, 10, 3, 10)); }
 
-            @Override
-            protected void updateItem(String v, boolean empty) {
+            @Override protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setGraphic(null); setStyle(""); return; }
 
@@ -328,8 +316,7 @@ public class ResupplyReportScreen extends VBox {
         return col;
     }
 
-    // Footer
-
+    /** Builds the footer containing total flagged counts. */
     private HBox buildFooter() {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
@@ -346,10 +333,12 @@ public class ResupplyReportScreen extends VBox {
         return footer;
     }
 
-    // Report logic
-
+    /**
+     * Executes the report generation logic.
+     * Evaluates live data natively against the assigned Model interface.
+     */
     private void handleGenerateReport() {
-        Parser parser = new Parser(model);
+        Parser parser = new Parser((meditrack.model.ModelManager) model);
         try {
             parser.validate(CommandType.GENERATE_RESUPPLY_REPORT, Map.of());
         } catch (ParseException e) {
@@ -405,21 +394,17 @@ public class ResupplyReportScreen extends VBox {
         updateFlaggedCount(rows.size());
     }
 
-    // Helpers
-
+    /** Visual feedback indicator for UI actions. */
     private void setFeedback(String message, boolean isWarning) {
-        if (feedbackLabel == null) {
-            return;
-        }
+        if (feedbackLabel == null) return;
         feedbackLabel.setText(message);
         feedbackLabel.setStyle("-fx-text-fill: " + (isWarning ? WARNING : PRIMARY) + "; -fx-font-size: 10px;"
                 + " -fx-font-family: 'Consolas', monospace;");
     }
 
+    /** Helper to update the total count of flagged items in the footer. */
     private void updateFlaggedCount(int count) {
-        if (flaggedCountLabel == null) {
-            return;
-        }
+        if (flaggedCountLabel == null) return;
         if (count == 0) {
             flaggedCountLabel.setText("ALL CLEAR — NO FLAGS");
             flaggedCountLabel.setStyle("-fx-text-fill: " + PRIMARY + "; -fx-font-size: 10px; -fx-font-weight: bold;"
@@ -431,10 +416,12 @@ public class ResupplyReportScreen extends VBox {
         }
     }
 
+    /** Checks if a specific report row is expired based on the live system clock. */
     private boolean isExpired(ReportRow row) {
         return row.getExpiryDate() != null && row.getExpiryDate().isBefore(LocalDate.now());
     }
 
+    /** Generates the placeholder text for when no issues are found. */
     private Label buildEmptyPlaceholder() {
         Label lbl = new Label("PRESS GENERATE REPORT TO VIEW FLAGGED ITEMS");
         lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 11px; -fx-font-weight: bold;"
@@ -442,7 +429,7 @@ public class ResupplyReportScreen extends VBox {
         return lbl;
     }
 
-    /** Table row for the report grid. */
+    /** Lightweight container class representing a single row in the generated report. */
     public static class ReportRow {
         private final String name;
         private final int quantity;
@@ -450,12 +437,12 @@ public class ResupplyReportScreen extends VBox {
         private final String reason;
 
         /**
-         * Constructs a report row with the given supply details.
+         * Constructs a report row.
          *
-         * @param name       supply name
-         * @param quantity   current quantity
-         * @param expiryDate expiry date of the supply
-         * @param reason     flag text shown in the last column ( "Low Stock", "Expiring Soon")
+         * @param name       The supply name.
+         * @param quantity   The current quantity.
+         * @param expiryDate The expiry date.
+         * @param reason     The justification for why the item was flagged.
          */
         public ReportRow(String name, int quantity, LocalDate expiryDate, String reason) {
             this.name = name;
@@ -464,24 +451,16 @@ public class ResupplyReportScreen extends VBox {
             this.reason = reason;
         }
 
-        /** Returns the supply name. */
-        public String getName() {
-            return name;
-        }
+        /** Retrieves the supply name. */
+        public String getName() { return name; }
 
-        /** Returns the current quantity. */
-        public int getQuantity() {
-            return quantity;
-        }
+        /** Retrieves the item quantity. */
+        public int getQuantity() { return quantity; }
 
-        /** Returns the expiry date. */
-        public LocalDate getExpiryDate() {
-            return expiryDate;
-        }
+        /** Retrieves the expiration date. */
+        public LocalDate getExpiryDate() { return expiryDate; }
 
-        /** Returns the flag reason string. */
-        public String getReason() {
-            return reason;
-        }
+        /** Retrieves the flagging reason. */
+        public String getReason() { return reason; }
     }
 }

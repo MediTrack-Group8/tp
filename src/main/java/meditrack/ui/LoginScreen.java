@@ -4,15 +4,17 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import javafx.animation.FadeTransition;
-import javafx.animation.Timeline;
 import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.PasswordField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -24,15 +26,15 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
+
+import meditrack.model.Model;
 import meditrack.model.Role;
-import meditrack.model.Session;
 import meditrack.security.PasswordManager;
 
 /**
  * Represents the Login UI screen.
- * Handles user authentication and role selection before granting access to the
- * main application.
- * Uses the "Field Ops Command" tactical design system.
+ * Handles user authentication and role selection before granting access to the main application.
+ * Uses the "Field Ops Command" tactical design system and strictly uses the injected Model for session state.
  */
 public class LoginScreen extends BorderPane {
 
@@ -50,19 +52,22 @@ public class LoginScreen extends BorderPane {
     private static final String PC_HASH = PasswordManager.hashPassword("pc123");
     private static final String LO_HASH = PasswordManager.hashPassword("lo123");
 
+    private final Model model;
     private final Runnable onLoginSuccess;
 
     /**
      * Constructs the Login screen.
      *
-     * @param onLoginSuccess A callback function to execute once authentication is
-     * successful.
+     * @param model          The application data model to update the session state.
+     * @param onLoginSuccess A callback function to execute once authentication is successful.
      */
-    public LoginScreen(Runnable onLoginSuccess) {
+    public LoginScreen(Model model, Runnable onLoginSuccess) {
+        this.model = model;
         this.onLoginSuccess = onLoginSuccess;
         initializeUI();
     }
 
+    /** Initializes the root layout and panels of the login screen. */
     private void initializeUI() {
         setStyle("-fx-background-color: " + BG + ";");
         setTop(buildTitleBar());
@@ -70,6 +75,7 @@ public class LoginScreen extends BorderPane {
         setBottom(buildStatusBar());
     }
 
+    /** Builds the top title bar of the application window. */
     private HBox buildTitleBar() {
         HBox bar = new HBox();
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -91,6 +97,7 @@ public class LoginScreen extends BorderPane {
         return bar;
     }
 
+    /** Builds the central content area, including the tactical dot grid and login form. */
     private StackPane buildMainContent() {
         StackPane stack = new StackPane();
         stack.setStyle("-fx-background-color: " + BG + ";");
@@ -121,6 +128,7 @@ public class LoginScreen extends BorderPane {
         return stack;
     }
 
+    /** Draws the background dot grid for the tactical aesthetic. */
     private void drawDotGrid(Canvas canvas) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
@@ -133,6 +141,7 @@ public class LoginScreen extends BorderPane {
         }
     }
 
+    /** Builds the interactive login form components (password, dropdown, buttons). */
     private VBox buildLoginForm() {
         VBox form = new VBox(18);
         form.setAlignment(Pos.CENTER);
@@ -187,7 +196,7 @@ public class LoginScreen extends BorderPane {
                         + "-fx-padding: 0;"
                         + "-fx-font-family: 'Consolas', monospace; -fx-font-size: 13px;");
 
-        roleDropdown.setButtonCell(new javafx.scene.control.ListCell<>() {
+        roleDropdown.setButtonCell(new ListCell<>() {
             @Override
             protected void updateItem(Role item, boolean empty) {
                 super.updateItem(item, empty);
@@ -203,7 +212,7 @@ public class LoginScreen extends BorderPane {
             }
         });
 
-        roleDropdown.setCellFactory(lv -> new javafx.scene.control.ListCell<>() {
+        roleDropdown.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(Role item, boolean empty) {
                 super.updateItem(item, empty);
@@ -243,7 +252,7 @@ public class LoginScreen extends BorderPane {
 
         roleDropdown.skinProperty().addListener((obs, oldSkin, newSkin) -> {
             if (newSkin != null) {
-                javafx.scene.Node popup = roleDropdown.lookup(".list-view");
+                Node popup = roleDropdown.lookup(".list-view");
                 if (popup != null) {
                     popup.setStyle("-fx-background-color: " + DD_BG + ";"
                             + "-fx-border-color: " + DD_BORDER + ";"
@@ -255,12 +264,10 @@ public class LoginScreen extends BorderPane {
 
         roleSection.getChildren().add(roleDropdown);
 
-        // Error label
         Label errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: #e07070; -fx-font-size: 11px;"
                 + " -fx-font-family: 'Consolas', monospace;");
 
-        // Login button
         Button loginBtn = new Button("INITIALISE CONNECTION");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
         loginBtn.setStyle(buttonStyle());
@@ -268,7 +275,6 @@ public class LoginScreen extends BorderPane {
         loginBtn.setOnMouseExited(e -> loginBtn.setStyle(buttonStyle()));
         loginBtn.setOnAction(e -> handleLogin(passwordField.getText(), roleDropdown.getValue(), errorLabel));
 
-        // Network status indicator
         HBox statusRow = new HBox(6);
         statusRow.setAlignment(Pos.CENTER_RIGHT);
         Circle dot = new Circle(3.5, Color.web(OLIVE_LIGHT));
@@ -288,6 +294,7 @@ public class LoginScreen extends BorderPane {
         return form;
     }
 
+    /** Builds a labeled section for form inputs. */
     private VBox buildFieldSection(String labelText) {
         VBox section = new VBox(5);
         Label lbl = new Label(labelText);
@@ -297,6 +304,7 @@ public class LoginScreen extends BorderPane {
         return section;
     }
 
+    /** Builds the bottom status bar containing local system metrics. */
     private HBox buildStatusBar() {
         HBox bar = new HBox();
         bar.setAlignment(Pos.CENTER_LEFT);
@@ -328,6 +336,7 @@ public class LoginScreen extends BorderPane {
         return bar;
     }
 
+    /** Generates a consistently formatted status label for the footer. */
     private Label makeStatusLabel(String text) {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px;"
@@ -335,6 +344,7 @@ public class LoginScreen extends BorderPane {
         return lbl;
     }
 
+    /** Returns the base CSS styling for text inputs. */
     private String inputStyle() {
         return "-fx-background-color: #0d0f0b; -fx-text-fill: " + OLIVE_LIGHT + ";"
                 + " -fx-border-color: " + BORDER + "; -fx-border-width: 1;"
@@ -344,6 +354,7 @@ public class LoginScreen extends BorderPane {
                 + " -fx-prompt-text-fill: " + TEXT_MUTED + ";";
     }
 
+    /** Returns the CSS styling for text inputs when focused. */
     private String inputFocusStyle() {
         return "-fx-background-color: #0d0f0b; -fx-text-fill: " + OLIVE_LIGHT + ";"
                 + " -fx-border-color: " + OLIVE + "; -fx-border-width: 0 0 2 0;"
@@ -353,6 +364,7 @@ public class LoginScreen extends BorderPane {
                 + " -fx-prompt-text-fill: " + TEXT_MUTED + ";";
     }
 
+    /** Returns the base CSS styling for the login button. */
     private String buttonStyle() {
         return "-fx-background-color: " + OLIVE + "; -fx-text-fill: white;"
                 + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 13 24 13 24;"
@@ -360,6 +372,7 @@ public class LoginScreen extends BorderPane {
                 + " -fx-font-family: 'Consolas', monospace;";
     }
 
+    /** Returns the hover CSS styling for the login button. */
     private String buttonHoverStyle() {
         return "-fx-background-color: " + OLIVE_LIGHT + "; -fx-text-fill: white;"
                 + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 13 24 13 24;"
@@ -369,6 +382,7 @@ public class LoginScreen extends BorderPane {
 
     /**
      * Handles the authentication process using BCrypt-secured Demo Credentials.
+     * Sets the validated role into the application's in-memory model session.
      *
      * @param plainTextPassword The password entered by the user.
      * @param selectedRole      The role selected from the dropdown.
@@ -380,7 +394,6 @@ public class LoginScreen extends BorderPane {
             return;
         }
 
-        // Use BCrypt to securely check the entered plaintext against the hashes
         boolean isAuthenticated = switch (selectedRole) {
             case MEDICAL_OFFICER   -> PasswordManager.checkPassword(plainTextPassword, MO_HASH);
             case FIELD_MEDIC       -> PasswordManager.checkPassword(plainTextPassword, FM_HASH);
@@ -389,7 +402,7 @@ public class LoginScreen extends BorderPane {
         };
 
         if (isAuthenticated) {
-            Session.getInstance().setRole(selectedRole);
+            model.getSession().setRole(selectedRole);
             onLoginSuccess.run();
         } else {
             errorLabel.setText("! AUTH FAILED: INVALID ACCESS KEY.");
