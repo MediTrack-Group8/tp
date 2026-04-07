@@ -306,9 +306,13 @@ The system should process user actions and update the user interface within 1 se
 
 ---
 
-### Reliability
+### Reliability and Exception Handling
 
-The system should detect invalid inputs and display appropriate error messages without crashing the application. Corrupt individual records in the data file are skipped with a warning rather than preventing application startup.
+The system guarantees high reliability through strict validation and comprehensive exception handling.
+
+- The system explicitly catches specific exceptions (e.g., `ParseException`, `CommandException`, `IOException`, `NumberFormatException`) to prevent silent or catastrophic crashes.
+- Errors are immediately surfaced to the user via dedicated UI `errorLabels`, providing actionable feedback rather than swallowing errors.
+- Corrupt individual records in the data file are skipped with a warning rather than preventing application startup.
 
 ---
 
