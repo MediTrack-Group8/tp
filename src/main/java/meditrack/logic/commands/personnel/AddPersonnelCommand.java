@@ -8,7 +8,6 @@ import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.BloodGroup;
 import meditrack.model.Model;
 import meditrack.model.Role;
-import meditrack.model.Session;
 import meditrack.model.Status;
 
 /**
@@ -65,7 +64,8 @@ public class AddPersonnelCommand extends Command {
      */
     @Override
     public CommandResult execute(Model model) throws CommandException {
-        Role currentRole = Session.getInstance().getRole();
+        // Grab the role safely from the injected model, NOT the Singleton!
+        Role currentRole = model.getSession().getRole();
 
         // RBAC Check: Platoon Commanders can only draft pending records
         if (currentRole == Role.PLATOON_COMMANDER && status != Status.PENDING) {
@@ -96,7 +96,7 @@ public class AddPersonnelCommand extends Command {
         return status;
     }
 
-    /** Retrieves the blood group, or {@code null} if not recorded. */
+    /** Retrieves the blood group, or null if not recorded. */
     public BloodGroup getBloodGroup() {
         return bloodGroup;
     }

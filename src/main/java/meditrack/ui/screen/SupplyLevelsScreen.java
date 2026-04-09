@@ -22,30 +22,32 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import meditrack.model.ModelManager;
+import meditrack.commons.core.Constants;
+import meditrack.model.Model;
 import meditrack.model.Supply;
 
 /**
- * Supply Levels screen full stock overview for Logistics Officers.
+ * A comprehensive Supply Levels overview screen explicitly designed for Logistics Officers.
+ * It provides a macroscopic read-only view of all tracked inventory items.
  */
 public class SupplyLevelsScreen extends VBox {
-    private static final String BG = "#121410";
-    private static final String SURFACE_LOW = "#1a1c18";
-    private static final String SURFACE = "#1e201c";
-    private static final String SURFACE_HIGH = "#292b26";
+    private static final String BG              = "#121410";
+    private static final String SURFACE_LOW     = "#1a1c18";
+    private static final String SURFACE         = "#1e201c";
+    private static final String SURFACE_HIGH    = "#292b26";
     private static final String SURFACE_HIGHEST = "#333531";
-    private static final String SURFACE_BRIGHT = "#383a35";
-    private static final String PRIMARY = "#b6d088";
-    private static final String PRIMARY_CONT = "#556b2f";
-    private static final String OUTLINE = "#8f9284";
-    private static final String OUTLINE_VAR = "#45483c";
-    private static final String ON_SURFACE = "#e3e3dc";
-    private static final String SECONDARY = "#c8c6c6";
-    private static final String WARNING = "#fbbc00";
-    private static final String ERROR = "#ffb4ab";
-    private static final int PAGE_SIZE = 15;
+    private static final String SURFACE_BRIGHT  = "#383a35";
+    private static final String PRIMARY         = "#b6d088";
+    private static final String PRIMARY_CONT    = "#556b2f"; // Added missing constant
+    private static final String OUTLINE         = "#8f9284";
+    private static final String OUTLINE_VAR     = "#45483c";
+    private static final String ON_SURFACE      = "#e3e3dc";
+    private static final String SECONDARY       = "#c8c6c6";
+    private static final String WARNING         = "#fbbc00";
+    private static final String ERROR           = "#ffb4ab";
+    private static final int    PAGE_SIZE       = 15;
 
-    private final ModelManager model;
+    private final Model model;
     private final TableView<Supply> table = new TableView<>();
 
     private FilteredList<Supply> filtered;
@@ -61,13 +63,18 @@ public class SupplyLevelsScreen extends VBox {
     private Button nextBtn;
 
     /**
-     * @param model full supply list data source
+     * Constructs the read-only Supply Levels overview screen.
+     * Decoupled to rely entirely on the Model interface.
+     *
+     * @param model The application model providing live supply data.
      */
-    public SupplyLevelsScreen(ModelManager model) {
+    public SupplyLevelsScreen(Model model) {
         this.model = model;
         buildUi();
     }
 
+    /** Assembles the layout components for this screen. */
+    @SuppressWarnings("unchecked")
     private void buildUi() {
         setSpacing(0);
         setStyle("-fx-background-color: " + BG + ";");
@@ -93,8 +100,7 @@ public class SupplyLevelsScreen extends VBox {
         updatePage();
     }
 
-    // Header
-
+    /** Builds the top title bar and interactive search box. */
     private HBox buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -139,8 +145,7 @@ public class SupplyLevelsScreen extends VBox {
         return header;
     }
 
-    // Table
-
+    /** Configures the TableView, its columns, and custom cell rendering. */
     @SuppressWarnings("unchecked")
     private VBox buildTableSection() {
         table.setItems(pageItems);
@@ -155,31 +160,24 @@ public class SupplyLevelsScreen extends VBox {
             if (skin != null) {
                 Platform.runLater(() -> {
                     javafx.scene.Node hdrBg = table.lookup(".column-header-background");
-                    if (hdrBg != null) {
-                        hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
-                    }
+                    if (hdrBg != null) hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
                     table.lookupAll(".column-header").forEach(n -> n.setStyle(
                             "-fx-background-color: transparent; -fx-border-color: transparent transparent "
                                     + OUTLINE_VAR + " transparent; -fx-border-width: 0 0 1 0;"));
                     table.lookupAll(".column-header .label").forEach(n -> n.setStyle(
                             "-fx-text-fill: " + OUTLINE + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                                     + " -fx-font-family: 'Consolas', monospace;"));
-                    javafx.scene.Node filler = table.lookup(".filler");
-                    if (filler != null) {
-                        filler.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
-                    }
                 });
             }
         });
 
-        table.setRowFactory(tv -> new javafx.scene.control.TableRow<Supply>() {
+        table.setRowFactory(tv -> new javafx.scene.control.TableRow<>() {
             @Override
             protected void updateItem(Supply item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setStyle("-fx-background-color: transparent;");
-                    setOnMouseEntered(null);
-                    setOnMouseExited(null);
+                    setOnMouseEntered(null); setOnMouseExited(null);
                     return;
                 }
                 String st = state(item);
@@ -191,12 +189,12 @@ public class SupplyLevelsScreen extends VBox {
             }
         });
 
-        TableColumn<Supply, Number> idxCol = buildIndexColumn();
-        TableColumn<Supply, String> nameCol = buildNameColumn();
-        TableColumn<Supply, Integer> qtyCol = buildQuantityColumn();
-        TableColumn<Supply, LocalDate> expiryCol = buildExpiryColumn();
-
-        table.getColumns().addAll(idxCol, nameCol, qtyCol, expiryCol);
+        table.getColumns().addAll(
+                buildIndexColumn(),
+                buildNameColumn(),
+                buildQuantityColumn(),
+                buildExpiryColumn()
+        );
 
         VBox section = new VBox(0);
         VBox.setVgrow(section, Priority.ALWAYS);
@@ -206,25 +204,20 @@ public class SupplyLevelsScreen extends VBox {
         return section;
     }
 
+    /** Creates the numerical index column. */
     private TableColumn<Supply, Number> buildIndexColumn() {
         TableColumn<Supply, Number> col = new TableColumn<>("#");
         col.setMinWidth(50);
         col.setMaxWidth(50);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(0));
-        col.setCellFactory(c -> new TableCell<Supply, Number>() {
-            @Override
-            protected void updateItem(Number v, boolean empty) {
+        col.setCellFactory(c -> new TableCell<>() {
+            @Override protected void updateItem(Number v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
-                    setText(null);
-                    setStyle("");
-                    return;
+                    setText(null); setStyle(""); return;
                 }
                 int idx = getIndex();
-                if (idx < 0 || idx >= getTableView().getItems().size()) {
-                    setText(null);
-                    return;
-                }
+                if (idx < 0 || idx >= getTableView().getItems().size()) { setText(null); return; }
                 int globalIdx = currentPage * PAGE_SIZE + idx + 1;
                 String color = stateColor(state(getTableView().getItems().get(idx)));
                 setText(String.format("%03d", globalIdx));
@@ -235,32 +228,20 @@ public class SupplyLevelsScreen extends VBox {
         return col;
     }
 
+    /** Creates the supply name column. */
     private TableColumn<Supply, String> buildNameColumn() {
         TableColumn<Supply, String> col = new TableColumn<>("SUPPLY NAME");
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getName()));
-        col.setCellFactory(c -> new TableCell<Supply, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Region dot = new Region();
             private final Label lbl = new Label();
             private final HBox box = new HBox(10, dot, lbl);
-            {
-                dot.setMinSize(8, 8);
-                dot.setMaxSize(8, 8);
-                box.setAlignment(Pos.CENTER_LEFT);
-            }
-
-            @Override
-            protected void updateItem(String v, boolean empty) {
+            { dot.setMinSize(8, 8); dot.setMaxSize(8, 8); box.setAlignment(Pos.CENTER_LEFT); }
+            @Override protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
-                if (empty || v == null) {
-                    setGraphic(null);
-                    setStyle("");
-                    return;
-                }
+                if (empty || v == null) { setGraphic(null); setStyle(""); return; }
                 int idx = getIndex();
-                if (idx < 0 || idx >= getTableView().getItems().size()) {
-                    setGraphic(null);
-                    return;
-                }
+                if (idx < 0 || idx >= getTableView().getItems().size()) { setGraphic(null); return; }
                 String color = stateColor(state(getTableView().getItems().get(idx)));
                 dot.setStyle("-fx-background-color: " + color + ";");
                 lbl.setText(v.toUpperCase());
@@ -273,31 +254,20 @@ public class SupplyLevelsScreen extends VBox {
         return col;
     }
 
+    /** Creates the numerical quantity column. */
     private TableColumn<Supply, Integer> buildQuantityColumn() {
         TableColumn<Supply, Integer> col = new TableColumn<>("QUANTITY");
         col.setMinWidth(100);
         col.setMaxWidth(120);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getQuantity()));
-        col.setCellFactory(c -> new TableCell<Supply, Integer>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label badge = new Label();
-            {
-                badge.setPadding(new Insets(3, 10, 3, 10));
-                badge.setAlignment(Pos.CENTER);
-            }
-
-            @Override
-            protected void updateItem(Integer v, boolean empty) {
+            { badge.setPadding(new Insets(3, 10, 3, 10)); badge.setAlignment(Pos.CENTER); }
+            @Override protected void updateItem(Integer v, boolean empty) {
                 super.updateItem(v, empty);
-                if (empty || v == null) {
-                    setGraphic(null);
-                    setStyle("");
-                    return;
-                }
+                if (empty || v == null) { setGraphic(null); setStyle(""); return; }
                 int idx = getIndex();
-                if (idx < 0 || idx >= getTableView().getItems().size()) {
-                    setGraphic(null);
-                    return;
-                }
+                if (idx < 0 || idx >= getTableView().getItems().size()) { setGraphic(null); return; }
                 String st = state(getTableView().getItems().get(idx));
                 badge.setText(String.format("%03d", v));
                 if ("ERROR".equals(st)) {
@@ -320,25 +290,18 @@ public class SupplyLevelsScreen extends VBox {
         return col;
     }
 
+    /** Creates the supply expiry date column. */
     private TableColumn<Supply, LocalDate> buildExpiryColumn() {
         TableColumn<Supply, LocalDate> col = new TableColumn<>("EXPIRY DATE");
         col.setMinWidth(150);
         col.setMaxWidth(170);
         col.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue().getExpiryDate()));
-        col.setCellFactory(c -> new TableCell<Supply, LocalDate>() {
-            @Override
-            protected void updateItem(LocalDate v, boolean empty) {
+        col.setCellFactory(c -> new TableCell<>() {
+            @Override protected void updateItem(LocalDate v, boolean empty) {
                 super.updateItem(v, empty);
-                if (empty || v == null) {
-                    setText(null);
-                    setStyle("");
-                    return;
-                }
+                if (empty || v == null) { setText(null); setStyle(""); return; }
                 int idx = getIndex();
-                if (idx < 0 || idx >= getTableView().getItems().size()) {
-                    setText(null);
-                    return;
-                }
+                if (idx < 0 || idx >= getTableView().getItems().size()) { setText(null); return; }
                 String st = state(getTableView().getItems().get(idx));
                 if ("ERROR".equals(st) && v.isBefore(LocalDate.now())) {
                     setText("EXPIRED");
@@ -358,8 +321,7 @@ public class SupplyLevelsScreen extends VBox {
         return col;
     }
 
-    // Footer
-
+    /** Builds the footer containing total counts and pagination navigation. */
     private HBox buildFooter() {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
@@ -401,8 +363,7 @@ public class SupplyLevelsScreen extends VBox {
         return footer;
     }
 
-    // Pagination
-
+    /** Updates the visible rows based on the current page index. */
     private void updatePage() {
         int from = currentPage * PAGE_SIZE;
         int size = sorted.size();
@@ -411,16 +372,15 @@ public class SupplyLevelsScreen extends VBox {
         updatePaginationControls();
     }
 
+    /** Updates the UI state of pagination buttons and labels. */
     private void updatePaginationControls() {
         int totalPages = Math.max(1, (int) Math.ceil((double) sorted.size() / PAGE_SIZE));
-        if (pageLabel != null)
-            pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
-        if (prevBtn != null)
-            prevBtn.setDisable(currentPage == 0);
-        if (nextBtn != null)
-            nextBtn.setDisable(currentPage >= totalPages - 1);
+        if (pageLabel != null) pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
+        if (prevBtn != null) prevBtn.setDisable(currentPage == 0);
+        if (nextBtn != null) nextBtn.setDisable(currentPage >= totalPages - 1);
     }
 
+    /** Creates a styled button for pagination navigation. */
     private Button pageNavBtn(String text) {
         String base = "-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + SECONDARY + ";"
                 + " -fx-font-size: 10px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
@@ -435,8 +395,7 @@ public class SupplyLevelsScreen extends VBox {
         return btn;
     }
 
-    // Helpers
-
+    /** Generates consistent statistical labels. */
     private Label statLabel(String text, String color) {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 10px; -fx-font-weight: bold;"
@@ -444,19 +403,17 @@ public class SupplyLevelsScreen extends VBox {
         return lbl;
     }
 
+    /** Refreshes summary labels using live data from the Model. */
     private void updateFooterStats() {
         int total = model.getFilteredSupplyList().size();
         int lowStock = model.getLowStockSupplies(50).size();
         int critical = model.getLowStockSupplies(10).size();
-        if (totalLabel != null)
-            totalLabel.setText("TOTAL ITEMS: " + total);
-        if (lowStockLabel != null)
-            lowStockLabel.setText("LOW STOCK: " + lowStock);
-        if (criticalLabel != null)
-            criticalLabel.setText("CRITICAL: " + critical);
+        if (totalLabel != null) totalLabel.setText("TOTAL ITEMS: " + total);
+        if (lowStockLabel != null) lowStockLabel.setText("LOW STOCK: " + lowStock);
+        if (criticalLabel != null) criticalLabel.setText("CRITICAL: " + critical);
     }
 
-    /** Ranks supply severity. 1 = Worst, 5 = Best */
+    /** Ranks supply severity to enable priority sorting. 1 = Worst, 5 = Best */
     private static int getSeverityPriority(Supply s) {
         LocalDate today = LocalDate.now();
         if (s.getExpiryDate().isBefore(today) || s.getQuantity() == 0) return 1;
@@ -466,25 +423,24 @@ public class SupplyLevelsScreen extends VBox {
         return 5;
     }
 
+    /** Categorizes supply health based on quantity and expiration. */
     private String state(Supply s) {
         LocalDate today = LocalDate.now();
-        if (s.getExpiryDate().isBefore(today) || s.getQuantity() < 10) {
-            return "ERROR";
-        }
-        if (s.getQuantity() < 50 || s.getExpiryDate().isBefore(today.plusDays(30))) {
-            return "WARNING";
-        }
+        if (s.getExpiryDate().isBefore(today) || s.getQuantity() < 10) return "ERROR";
+        if (s.getQuantity() < 50 || s.getExpiryDate().isBefore(today.plusDays(30))) return "WARNING";
         return "NORMAL";
     }
 
+    /** Converts logical health states to CSS colors. */
     private String stateColor(String state) {
         return switch (state) {
-            case "ERROR" -> ERROR;
+            case "ERROR"   -> ERROR;
             case "WARNING" -> WARNING;
-            default -> PRIMARY;
+            default        -> PRIMARY;
         };
     }
 
+    /** Renders the empty state visual. */
     private Label buildEmptyPlaceholder() {
         Label lbl = new Label("NO SUPPLY RECORDS");
         lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 11px; -fx-font-weight: bold;"

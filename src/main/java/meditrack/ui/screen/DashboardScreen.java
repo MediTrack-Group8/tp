@@ -2,6 +2,8 @@ package meditrack.ui.screen;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import javafx.geometry.Insets;
@@ -13,15 +15,16 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import meditrack.model.ModelManager;
+
+import meditrack.model.Model;
 import meditrack.model.Personnel;
 import meditrack.model.Role;
-import meditrack.model.Session;
 import meditrack.model.Status;
 import meditrack.model.Supply;
 
 /**
- * Role-specific mission dashboard shown as the default landing screen.
+ * Role-specific mission dashboard.
+ * Serves as the primary landing screen, aggregating live statistics based on the user's operational role.
  */
 public class DashboardScreen extends VBox {
 
@@ -38,16 +41,17 @@ public class DashboardScreen extends VBox {
     private static final String WARNING = "#fbbc00";
     private static final String ERROR = "#e07070";
 
-    private final ModelManager model;
+    private final Model model;
     private final GridPane statGrid = new GridPane();
     private final VBox activityPane = new VBox();
 
     /**
-     * Constructs the DashboardScreen.
+     * Constructs the Dashboard screen.
+     * Decoupled to accept the abstract Model interface rather than the concrete ModelManager.
      *
-     * @param model The application model used to read live data.
+     * @param model The application model used to read live data and session state.
      */
-    public DashboardScreen(ModelManager model) {
+    public DashboardScreen(Model model) {
         this.model = model;
         setStyle("-fx-background-color: " + BG + ";");
         setSpacing(0);
@@ -56,21 +60,20 @@ public class DashboardScreen extends VBox {
         refresh();
     }
 
+    /** Assembles the core layout structure. */
     private void buildUi() {
         getChildren().addAll(buildHeader(), buildStatRow(), buildActivityPane());
         VBox.setVgrow(activityPane, Priority.ALWAYS);
     }
 
-    // Header bar
-
+    /** Builds the top status bar containing the dynamic role title. */
     private HBox buildHeader() {
         HBox bar = new HBox();
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(14, 20, 14, 20));
-        bar.setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + BORDER
-                + "; -fx-border-width: 0 0 1 0;");
+        bar.setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + BORDER + "; -fx-border-width: 0 0 1 0;");
 
-        Role role = Session.getInstance().getRole();
+        Role role = model.getSession().getRole();
         String consoleName = switch (role) {
             case FIELD_MEDIC -> "SUPPLY & PERSONNEL HUD";
             case MEDICAL_OFFICER -> "MEDICAL READINESS HUD";
@@ -80,24 +83,20 @@ public class DashboardScreen extends VBox {
 
         VBox left = new VBox(3);
         Label title = new Label("DEPLOYMENT CONSOLE  //  " + consoleName);
-        title.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', 'Courier New', monospace;");
+        title.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold; -fx-font-family: 'Consolas', 'Courier New', monospace;");
         left.getChildren().add(title);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label ts = new Label(LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        ts.setStyle("-fx-text-fill: " + OLIVE_LIGHT + "; -fx-font-size: 10px;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        Label ts = new Label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        ts.setStyle("-fx-text-fill: " + OLIVE_LIGHT + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;");
 
         bar.getChildren().addAll(left, spacer, ts);
         return bar;
     }
 
-    // Stat cards
-
+    /** Instantiates the grid container for the four critical statistics cards. */
     private HBox buildStatRow() {
         HBox row = new HBox(1);
         row.setStyle("-fx-background-color: " + BORDER + ";");
@@ -119,6 +118,7 @@ public class DashboardScreen extends VBox {
         return row;
     }
 
+    /** Instantiates the container for the lower activity feed. */
     private VBox buildActivityPane() {
         activityPane.setStyle("-fx-background-color: " + BG + ";");
         activityPane.setPadding(new Insets(16, 20, 16, 20));
@@ -126,17 +126,15 @@ public class DashboardScreen extends VBox {
         return activityPane;
     }
 
-    // Refresh
-
     /**
-     * Re-reads model data and redraws all stat cards and the activity pane.
-     * Call this every time the dashboard is shown.
+     * Triggers a recalculation and redraw of all dashboard statistics and lists.
+     * Ensures the data is fresh whenever the user navigates back to this screen.
      */
     public void refresh() {
         statGrid.getChildren().clear();
         activityPane.getChildren().clear();
 
-        Role role = Session.getInstance().getRole();
+        Role role = model.getSession().getRole();
         switch (role) {
             case FIELD_MEDIC -> refreshFieldMedic();
             case MEDICAL_OFFICER -> refreshMedicalOfficer();
@@ -145,8 +143,7 @@ public class DashboardScreen extends VBox {
         }
     }
 
-    // Role: Field Medic
-
+    /** Populates dashboard specific to Field Medics. */
     private void refreshFieldMedic() {
         List<Supply> supplies = model.getFilteredSupplyList();
         int totalSupplies = supplies.size();
@@ -155,17 +152,14 @@ public class DashboardScreen extends VBox {
         int totalPersonnel = model.getPersonnelList().size();
 
         addStatCard(0, "TOTAL SUPPLIES", String.valueOf(totalSupplies), OLIVE_PALE, null);
-        addStatCard(1, "LOW STOCK (<10)", String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT,
-                lowStock > 0 ? WARNING : null);
-        addStatCard(2, "EXPIRING SOON", String.valueOf(expiringSoon), expiringSoon > 0 ? WARNING : OLIVE_LIGHT,
-                expiringSoon > 0 ? WARNING : null);
+        addStatCard(1, "LOW STOCK (<10)", String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT, lowStock > 0 ? WARNING : null);
+        addStatCard(2, "EXPIRING SOON", String.valueOf(expiringSoon), expiringSoon > 0 ? WARNING : OLIVE_LIGHT, expiringSoon > 0 ? WARNING : null);
         addStatCard(3, "TOTAL PERSONNEL", String.valueOf(totalPersonnel), OLIVE_PALE, null);
 
         buildSupplyAlertActivity();
     }
 
-    // Role: Medical Officer
-
+    /** Populates dashboard specific to Medical Officers. */
     private void refreshMedicalOfficer() {
         int fit = count(Status.FIT);
         int mc = count(Status.MC);
@@ -173,17 +167,14 @@ public class DashboardScreen extends VBox {
         int casualty = count(Status.CASUALTY);
 
         addStatCard(0, "FIT FOR DUTY", String.valueOf(fit), OLIVE_PALE, null);
-        addStatCard(1, "MEDICAL ATTN", String.valueOf(mc + lightDuty), mc + lightDuty > 0 ? WARNING : OLIVE_LIGHT,
-                mc + lightDuty > 0 ? WARNING : null);
-        addStatCard(2, "CASUALTY", String.valueOf(casualty), casualty > 0 ? ERROR : OLIVE_LIGHT,
-                casualty > 0 ? ERROR : null);
+        addStatCard(1, "MEDICAL ATTN", String.valueOf(mc + lightDuty), mc + lightDuty > 0 ? WARNING : OLIVE_LIGHT, mc + lightDuty > 0 ? WARNING : null);
+        addStatCard(2, "CASUALTY", String.valueOf(casualty), casualty > 0 ? ERROR : OLIVE_LIGHT, casualty > 0 ? ERROR : null);
         addStatCard(3, "PENDING REVIEW", String.valueOf(count(Status.PENDING)), TEXT_DIM, null);
 
         buildPersonnelStatusActivity();
     }
 
-    // Role: Platoon Commander
-
+    /** Populates dashboard specific to Platoon Commanders. */
     private void refreshPlatoonCommander() {
         int total = model.getPersonnelList().size();
         int fit = count(Status.FIT);
@@ -192,16 +183,15 @@ public class DashboardScreen extends VBox {
 
         String fitPct = total == 0 ? "N/A" : (fit * 100 / total) + "%";
         addStatCard(0, "TOTAL STRENGTH", String.valueOf(total), OLIVE_PALE, null);
-        addStatCard(1, "FIT / DEPLOYABLE", String.valueOf(fit) + "  (" + fitPct + ")", OLIVE_PALE, null);
-        addStatCard(2, "NON-DEPLOYABLE", String.valueOf(nonDeploy), nonDeploy > 0 ? WARNING : OLIVE_LIGHT,
-                nonDeploy > 0 ? WARNING : null);
+        // Fixed unnecessary String.valueOf
+        addStatCard(1, "FIT / DEPLOYABLE", fit + "  (" + fitPct + ")", OLIVE_PALE, null);
+        addStatCard(2, "NON-DEPLOYABLE", String.valueOf(nonDeploy), nonDeploy > 0 ? WARNING : OLIVE_LIGHT, nonDeploy > 0 ? WARNING : null);
         addStatCard(3, "PENDING ASSESS", String.valueOf(pending), TEXT_DIM, null);
 
         buildPersonnelStatusActivity();
     }
 
-    // Role: Logistics Officer
-
+    /** Populates dashboard specific to Logistics Officers. */
     private void refreshLogisticsOfficer() {
         int total = model.getFilteredSupplyList().size();
         int lowStock = model.getLowStockSupplies(50).size();
@@ -209,29 +199,23 @@ public class DashboardScreen extends VBox {
         int critical = model.getLowStockSupplies(10).size();
 
         addStatCard(0, "TOTAL SUPPLIES", String.valueOf(total), OLIVE_PALE, null);
-        addStatCard(1, "LOW STOCK (<50)", String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT,
-                lowStock > 0 ? WARNING : null);
-        addStatCard(2, "EXPIRING SOON", String.valueOf(expiringSoon), expiringSoon > 0 ? WARNING : OLIVE_LIGHT,
-                expiringSoon > 0 ? WARNING : null);
-        addStatCard(3, "CRITICAL (<10)", String.valueOf(critical), critical > 0 ? ERROR : OLIVE_LIGHT,
-                critical > 0 ? ERROR : null);
+        addStatCard(1, "LOW STOCK (<50)", String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT, lowStock > 0 ? WARNING : null);
+        addStatCard(2, "EXPIRING SOON", String.valueOf(expiringSoon), expiringSoon > 0 ? WARNING : OLIVE_LIGHT, expiringSoon > 0 ? WARNING : null);
+        addStatCard(3, "CRITICAL (<10)", String.valueOf(critical), critical > 0 ? ERROR : OLIVE_LIGHT, critical > 0 ? ERROR : null);
 
         buildSupplyAlertActivity();
     }
 
-    // Stat card builder
-
     /**
-     * Creates and adds a stat card to the grid at the given column.
+     * Creates and adds a stat card to the top grid.
      *
-     * @param col         Grid column (0–3).
+     * @param col         Grid column (0-3).
      * @param label       Uppercase label text below the value.
      * @param value       The numeric/text value to display large.
      * @param valueColor  JavaFX hex color for the value text.
      * @param accentColor Left border accent color, or null for default olive.
      */
-    private void addStatCard(int col, String label, String value,
-            String valueColor, String accentColor) {
+    private void addStatCard(int col, String label, String value, String valueColor, String accentColor) {
         String accent = (accentColor != null) ? accentColor : OLIVE;
 
         VBox card = new VBox(6);
@@ -245,14 +229,11 @@ public class DashboardScreen extends VBox {
                 + " -fx-border-width: 0 0 0 3;");
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-text-fill: " + valueColor + "; -fx-font-size: 28px;"
-                + " -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        valueLabel.setStyle("-fx-text-fill: " + valueColor + "; -fx-font-size: 28px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
 
         Label nameLabel = new Label(label);
-        nameLabel.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        nameLabel.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; -fx-font-family: 'Consolas', monospace;");
 
-        // Thin accent top line
         Region topLine = new Region();
         topLine.setPrefHeight(2);
         topLine.setMaxWidth(32);
@@ -263,8 +244,7 @@ public class DashboardScreen extends VBox {
         statGrid.add(card, col, 0);
     }
 
-    // Activity pane builders
-
+    /** Aggregates and renders lists of problematic inventory items. */
     private void buildSupplyAlertActivity() {
         activityPane.getChildren().add(buildSectionHeader("SUPPLY ALERT SUMMARY", "ITEMS REQUIRING ATTENTION"));
 
@@ -279,7 +259,8 @@ public class DashboardScreen extends VBox {
         VBox listBox = new VBox(1);
         listBox.setStyle("-fx-background-color: " + BORDER + ";");
 
-        java.util.List<Supply> displayed = new java.util.ArrayList<>();
+        // Keep track of rendered items to prevent duplicates (an item can be BOTH low stock and expiring)
+        List<Supply> displayed = new ArrayList<>();
 
         for (Supply s : lowStock) {
             boolean isCritical = s.getQuantity() < 10;
@@ -291,32 +272,24 @@ public class DashboardScreen extends VBox {
         }
 
         for (Supply s : expiringSoon) {
-            boolean alreadyShown = false;
-            for (Supply d : displayed) {
-                if (d == s) {
-                    alreadyShown = true;
-                    break;
-                }
-            }
-            if (!alreadyShown) {
+            if (!displayed.contains(s)) {
                 listBox.getChildren().add(buildSupplyRow(s, WARNING, "EXPIRING"));
             }
         }
         activityPane.getChildren().add(listBox);
     }
 
+    /** Aggregates and renders a feed of recent personnel status changes. */
     private void buildPersonnelStatusActivity() {
         activityPane.getChildren().add(buildSectionHeader("PERSONNEL STATUS", "LATEST 10 UPDATES"));
 
-        List<Personnel> all = new java.util.ArrayList<>(model.getPersonnelList());
+        List<Personnel> all = new ArrayList<>(model.getPersonnelList());
         if (all.isEmpty()) {
             activityPane.getChildren().add(buildEmptyState("NO PERSONNEL ON RECORD"));
             return;
         }
 
-        all.sort(java.util.Comparator.comparing(Personnel::getLastModified).reversed()
-                .thenComparing(Personnel::getName));
-
+        all.sort(Comparator.comparing(Personnel::getLastModified).reversed().thenComparing(Personnel::getName));
         List<Personnel> latest10 = all.stream().limit(10).toList();
 
         VBox listBox = new VBox(1);
@@ -336,20 +309,18 @@ public class DashboardScreen extends VBox {
         activityPane.getChildren().add(listBox);
     }
 
+    /** Formats the header bar for an activity list. */
     private HBox buildSectionHeader(String title, String badge) {
         HBox bar = new HBox(10);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10, 0, 8, 0));
 
         Region accent = new Region();
-        accent.setPrefWidth(3);
-        accent.setMinWidth(3);
-        accent.setPrefHeight(14);
+        accent.setPrefWidth(3); accent.setMinWidth(3); accent.setPrefHeight(14);
         accent.setStyle("-fx-background-color: " + OLIVE + ";");
 
         Label lbl = new Label(title);
-        lbl.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        lbl.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -364,6 +335,7 @@ public class DashboardScreen extends VBox {
         return bar;
     }
 
+    /** Formats a single supply item row in the activity feed. */
     private HBox buildSupplyRow(Supply supply, String accentColor, String tag) {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -372,27 +344,22 @@ public class DashboardScreen extends VBox {
         row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: " + SURFACE_HI + ";"));
         row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + SURFACE + ";"));
 
-        // Status square
         Region sq = new Region();
-        sq.setMinSize(8, 8);
-        sq.setMaxSize(8, 8);
+        sq.setMinSize(8, 8); sq.setMaxSize(8, 8);
         sq.setStyle("-fx-background-color: " + accentColor + ";");
 
         Label name = new Label(supply.getName().toUpperCase());
         name.setMinWidth(220);
-        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label qty = new Label("QTY: " + supply.getQuantity());
-        qty.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        qty.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;");
 
         Label expiry = new Label("EXP: " + supply.getExpiryDate());
-        expiry.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        expiry.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;");
 
         Label tagLbl = new Label(tag);
         tagLbl.setStyle("-fx-text-fill: " + accentColor + "; -fx-font-size: 9px;"
@@ -404,6 +371,7 @@ public class DashboardScreen extends VBox {
         return row;
     }
 
+    /** Formats a single personnel item row in the activity feed. */
     private HBox buildPersonnelRow(Personnel p) {
         HBox row = new HBox();
         row.setAlignment(Pos.CENTER_LEFT);
@@ -412,48 +380,46 @@ public class DashboardScreen extends VBox {
         row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: " + SURFACE_HI + ";"));
         row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + SURFACE + ";"));
 
+        // Fixed Duplicate Case warning
         String statusColor = switch (p.getStatus()) {
             case FIT -> OLIVE_PALE;
-            case LIGHT_DUTY -> WARNING;
-            case MC -> WARNING;
+            case LIGHT_DUTY, MC -> WARNING;
             case CASUALTY -> ERROR;
             case PENDING -> TEXT_DIM;
         };
 
         Region sq = new Region();
-        sq.setMinSize(8, 8);
-        sq.setMaxSize(8, 8);
+        sq.setMinSize(8, 8); sq.setMaxSize(8, 8);
         sq.setStyle("-fx-background-color: " + statusColor + ";");
 
         Label name = new Label(p.getName().toUpperCase());
         name.setMinWidth(240);
-        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px;"
-                + " -fx-font-family: 'Consolas', monospace; -fx-padding: 0 0 0 12;");
+        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-family: 'Consolas', monospace; -fx-padding: 0 0 0 12;");
 
         Label status = new Label(p.getStatus().toString().toUpperCase());
         status.setMinWidth(120);
-        status.setStyle("-fx-text-fill: " + statusColor + "; -fx-font-size: 10px;"
-                + " -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        status.setStyle("-fx-text-fill: " + statusColor + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
 
         row.getChildren().addAll(sq, name, status);
         return row;
     }
 
+    /** Renders placeholder text when an activity list is empty. */
     private Label buildEmptyState(String message) {
         Label lbl = new Label(message);
-        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px;"
-                + " -fx-font-family: 'Consolas', monospace; -fx-padding: 16;");
+        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace; -fx-padding: 16;");
         return lbl;
     }
 
+    /** Renders standard column headers for activity lists. */
     private Label colHeader(String text, double minWidth) {
         Label lbl = new Label(text);
         lbl.setMinWidth(minWidth);
-        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', monospace;");
+        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
         return lbl;
     }
 
+    /** Helper to quickly count the number of personnel holding a specific status. */
     private int count(Status status) {
         return (int) model.getPersonnelList().stream()
                 .filter(p -> p.getStatus() == status)

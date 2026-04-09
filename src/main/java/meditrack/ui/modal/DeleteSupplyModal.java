@@ -23,28 +23,37 @@ import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.logic.parser.CommandType;
 import meditrack.logic.parser.Parser;
 import meditrack.logic.parser.exceptions.ParseException;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Supply;
 
-/** Delete-supply confirmation modal. */
+/**
+ * A destructive confirmation modal used before permanently deleting an inventory record.
+ * Routes through the Logic engine to guarantee safe persistence and Role-Based Access Control (RBAC).
+ */
 public class DeleteSupplyModal {
 
     private static final String SURFACE_LOW  = "#1a1c18";
     private static final String SURFACE      = "#1e201c";
     private static final String SURFACE_HIGH = "#292b26";
-    private static final String OUTLINE      = "#8f9284";
-    private static final String OUTLINE_VAR  = "#45483c";
     private static final String ON_SURFACE   = "#e3e3dc";
     private static final String SECONDARY    = "#c8c6c6";
     private static final String ERROR        = "#ffb4ab";
     private static final String ERROR_DARK   = "#93000a";
-    private static final String WARNING      = "#fbbc00";
 
-    public static void show(ModelManager model, Logic logic, Supply supply,
+    /**
+     * Displays the irreversible confirmation modal for supply deletion.
+     *
+     * @param model         The application data model.
+     * @param logic         The logic engine used for validating and executing the deletion.
+     * @param supply        The target Supply object to be deleted.
+     * @param oneBasedIndex The UI-facing 1-based index corresponding to the targeted supply item.
+     * @param owner         The parent window to block while the confirmation dialog is open.
+     */
+    public static void show(Model model, Logic logic, Supply supply,
                             int oneBasedIndex, Window owner) {
 
         // Validate before showing the dialog
-        Parser parser = new Parser(model);
+        Parser parser = new Parser((meditrack.model.ModelManager) model);
         try {
             parser.validate(CommandType.DELETE_SUPPLY,
                     Map.of("index", String.valueOf(oneBasedIndex)));
@@ -89,7 +98,6 @@ public class DeleteSupplyModal {
         body.setPadding(new Insets(32, 36, 28, 36));
         body.setStyle("-fx-background-color: " + SURFACE_LOW + ";");
 
-        // Target record display
         VBox recordCard = new VBox(8);
         recordCard.setPadding(new Insets(16));
         recordCard.setStyle("-fx-background-color: " + SURFACE + ";"
@@ -113,7 +121,6 @@ public class DeleteSupplyModal {
 
         recordCard.getChildren().addAll(recordIndex, recordName, metaRow);
 
-        // Warning bar
         HBox warnBar = new HBox(10);
         warnBar.setAlignment(Pos.CENTER_LEFT);
         warnBar.setPadding(new Insets(12, 16, 12, 14));
@@ -128,7 +135,6 @@ public class DeleteSupplyModal {
                 + " -fx-font-family: 'Consolas', monospace;");
         warnBar.getChildren().addAll(warningIcon, warnText);
 
-        // Error feedback label
         Label errorLabel = new Label();
         errorLabel.setWrapText(true);
         errorLabel.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 10px;"
@@ -145,7 +151,7 @@ public class DeleteSupplyModal {
 
         Button cancelBtn = EditSupplyModal.cancelButton(stage);
 
-        Button deleteBtn = new Button("CONFIRM DELETE  →");
+        Button deleteBtn = new Button("CONFIRM DELETE  \u2192");
         deleteBtn.setPrefHeight(44);
         deleteBtn.setPadding(new Insets(0, 24, 0, 24));
         String delBase = "-fx-background-color: " + ERROR_DARK + "; -fx-text-fill: " + ERROR + ";"
@@ -170,7 +176,6 @@ public class DeleteSupplyModal {
 
         footer.getChildren().addAll(cancelBtn, deleteBtn);
 
-        // Assemble
         VBox root = new VBox(0, titleBar, body, footer);
         root.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: rgba(143,146,132,0.2);"
                 + " -fx-border-width: 1;");
@@ -181,8 +186,13 @@ public class DeleteSupplyModal {
         stage.showAndWait();
     }
 
-    // Inline error stage (replaces Alert)
-
+    /**
+     * An inline, destructive-styled alert modal used to block illegal operations.
+     * Prevents the usage of native, off-brand OS alert dialogs.
+     *
+     * @param owner   The parent window.
+     * @param message The detailed validation error message.
+     */
     private static void showError(Window owner, String message) {
         Stage stage = new Stage();
         stage.initStyle(StageStyle.UNDECORATED);

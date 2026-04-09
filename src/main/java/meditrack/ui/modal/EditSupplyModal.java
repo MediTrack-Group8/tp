@@ -25,27 +25,32 @@ import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.logic.parser.CommandType;
 import meditrack.logic.parser.Parser;
 import meditrack.logic.parser.exceptions.ParseException;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Supply;
 
-/** Edit-supply modal. */
+/**
+ * A modal dialog enabling Logistics Officers and Field Medics to modify existing inventory records.
+ * Integrates directly with the Logic engine for data validation and auto-saving.
+ */
 public class EditSupplyModal {
 
         private static final String SURFACE_LOW = "#1a1c18";
         private static final String SURFACE = "#1e201c";
         private static final String SURFACE_HIGH = "#292b26";
-        private static final String PRIMARY = "#b6d088";
-        private static final String PRIMARY_CONT = "#556b2f";
-        private static final String ON_PRIMARY = "#233600";
-        private static final String OUTLINE = "#8f9284";
-        private static final String OUTLINE_VAR = "#45483c";
-        private static final String ON_SURFACE = "#e3e3dc";
-        private static final String SECONDARY = "#c8c6c6";
         private static final String WARNING = "#fbbc00";
         private static final String ERROR = "#ffb4ab";
 
-        public static void show(ModelManager model, Logic logic, Supply current,
-                        int oneBasedIndex, Window owner) {
+        /**
+         * Displays the interactive Edit Supply modal.
+         *
+         * @param model         The application data model.
+         * @param logic         The logic engine used to validate parameters and execute the Edit command.
+         * @param current       The existing Supply object data to pre-fill the form fields.
+         * @param oneBasedIndex The 1-based UI index of the supply item being edited.
+         * @param owner         The parent window to block while the modal is open.
+         */
+        public static void show(Model model, Logic logic, Supply current,
+                                int oneBasedIndex, Window owner) {
                 Stage stage = new Stage();
                 stage.initStyle(StageStyle.UNDECORATED);
                 stage.initModality(Modality.WINDOW_MODAL);
@@ -58,7 +63,7 @@ public class EditSupplyModal {
                 Label errorLabel = new Label();
                 errorLabel.setWrapText(true);
                 errorLabel.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 10px;"
-                                + " -fx-font-family: 'Consolas', monospace;");
+                        + " -fx-font-family: 'Consolas', monospace;");
 
                 // Title bar
                 HBox titleBar = new HBox(10);
@@ -66,7 +71,7 @@ public class EditSupplyModal {
                 titleBar.setPadding(new Insets(0, 8, 0, 14));
                 titleBar.setPrefHeight(40);
                 titleBar.setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-border-color: "
-                                + "rgba(69,72,60,0.2); -fx-border-width: 0 0 1 0;");
+                        + "rgba(69,72,60,0.2); -fx-border-width: 0 0 1 0;");
 
                 Region iconBox = new Region();
                 iconBox.setMinSize(16, 16);
@@ -75,7 +80,7 @@ public class EditSupplyModal {
 
                 Label titleLbl = new Label("EDIT SUPPLY RECORD  //  #" + String.format("%03d", oneBasedIndex));
                 titleLbl.setStyle("-fx-text-fill: " + WARNING + "; -fx-font-size: 11px; -fx-font-weight: bold;"
-                                + " -fx-font-family: 'Consolas', monospace;");
+                        + " -fx-font-family: 'Consolas', monospace;");
 
                 Region spacer = new Region();
                 HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -99,29 +104,27 @@ public class EditSupplyModal {
                 body.setStyle("-fx-background-color: " + SURFACE_LOW + ";");
 
                 VBox nameSection = fieldSection("NOMENCLATURE", nameField);
-
                 VBox qtySection = fieldSection("QUANTITY", qtyField);
                 VBox expirySection = fieldSection("EXPIRY DATE", expiryField);
                 Label expiryHint = new Label("FORMAT: YYYY-MM-DD");
                 expiryHint.setStyle("-fx-text-fill: rgba(143,146,132,0.5); -fx-font-size: 9px; -fx-font-weight: bold;"
-                                + " -fx-font-family: 'Consolas', monospace;");
+                        + " -fx-font-family: 'Consolas', monospace;");
                 expirySection.getChildren().add(expiryHint);
 
                 HBox twoCol = new HBox(24, qtySection, expirySection);
                 HBox.setHgrow(qtySection, Priority.ALWAYS);
                 HBox.setHgrow(expirySection, Priority.ALWAYS);
 
-                // Info bar — amber tint to signal modification
                 HBox infoBar = new HBox(10);
                 infoBar.setAlignment(Pos.CENTER_LEFT);
                 infoBar.setPadding(new Insets(12, 16, 12, 14));
                 infoBar.setStyle("-fx-background-color: rgba(251,188,0,0.06);"
-                                + " -fx-border-color: " + WARNING + "; -fx-border-width: 0 0 0 2;");
+                        + " -fx-border-color: " + WARNING + "; -fx-border-width: 0 0 0 2;");
                 Label infoLbl = new Label("Modifying record #" + String.format("%03d", oneBasedIndex)
-                                + " — changes will overwrite existing entry.");
+                        + " \u2014 changes will overwrite existing entry.");
                 infoLbl.setWrapText(true);
                 infoLbl.setStyle("-fx-text-fill: rgba(227,227,220,0.55); -fx-font-size: 9px;"
-                                + " -fx-font-family: 'Consolas', monospace;");
+                        + " -fx-font-family: 'Consolas', monospace;");
                 infoBar.getChildren().add(infoLbl);
 
                 body.getChildren().addAll(nameSection, twoCol, infoBar, errorLabel);
@@ -131,19 +134,19 @@ public class EditSupplyModal {
                 footer.setAlignment(Pos.CENTER_RIGHT);
                 footer.setPadding(new Insets(14, 20, 14, 20));
                 footer.setStyle("-fx-background-color: rgba(41,43,38,0.5); -fx-border-color: "
-                                + "rgba(69,72,60,0.1); -fx-border-width: 1 0 0 0;");
+                        + "rgba(69,72,60,0.1); -fx-border-width: 1 0 0 0;");
 
                 Button cancelBtn = cancelButton(stage);
 
-                Button confirmBtn = new Button("APPLY CHANGES  →");
+                Button confirmBtn = new Button("APPLY CHANGES  \u2192");
                 confirmBtn.setPrefHeight(44);
                 confirmBtn.setPadding(new Insets(0, 24, 0, 24));
                 String confirmBase = "-fx-background-color: linear-gradient(to bottom, " + WARNING + ", #b07800);"
-                                + " -fx-text-fill: #1a1000; -fx-font-size: 11px; -fx-font-weight: bold;"
-                                + " -fx-font-family: 'Consolas', monospace; -fx-cursor: hand; -fx-background-radius: 0;";
+                        + " -fx-text-fill: #1a1000; -fx-font-size: 11px; -fx-font-weight: bold;"
+                        + " -fx-font-family: 'Consolas', monospace; -fx-cursor: hand; -fx-background-radius: 0;";
                 String confirmHover = "-fx-background-color: " + WARNING + "; -fx-text-fill: #1a1000;"
-                                + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
-                                + " -fx-cursor: hand; -fx-background-radius: 0;";
+                        + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
+                        + " -fx-cursor: hand; -fx-background-radius: 0;";
                 confirmBtn.setStyle(confirmBase);
                 confirmBtn.setOnMouseEntered(e -> confirmBtn.setStyle(confirmHover));
                 confirmBtn.setOnMouseExited(e -> confirmBtn.setStyle(confirmBase));
@@ -154,11 +157,11 @@ public class EditSupplyModal {
                         String qty = qtyField.getText().trim();
                         String expiry = expiryField.getText().trim();
 
-                        Parser parser = new Parser(model);
+                        Parser parser = new Parser((meditrack.model.ModelManager) model);
                         try {
                                 parser.validate(CommandType.EDIT_SUPPLY, Map.of(
-                                                "name", name, "qty", qty, "expiry", expiry,
-                                                "index", String.valueOf(oneBasedIndex)));
+                                        "name", name, "qty", qty, "expiry", expiry,
+                                        "index", String.valueOf(oneBasedIndex)));
                         } catch (ParseException ex) {
                                 errorLabel.setText("! " + ex.getMessage());
                                 return;
@@ -174,10 +177,9 @@ public class EditSupplyModal {
 
                 footer.getChildren().addAll(cancelBtn, confirmBtn);
 
-                // Assemble
                 VBox root = new VBox(0, titleBar, body, footer);
                 root.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: rgba(143,146,132,0.2);"
-                                + " -fx-border-width: 1;");
+                        + " -fx-border-width: 1;");
 
                 Scene scene = new Scene(root, 520, 440);
                 stage.setScene(scene);
@@ -185,67 +187,96 @@ public class EditSupplyModal {
                 stage.showAndWait();
         }
 
-        // Shared helpers
-
-        static VBox fieldSection(String labelText, TextField field) {
+        /**
+         * Reusable UI builder for field sections, accessible to other Modals.
+         *
+         * @param labelText The header text for the field.
+         * @param field     The TextField to embed.
+         * @return A styled VBox container.
+         */
+        public static VBox fieldSection(String labelText, TextField field) {
                 Label lbl = new Label(labelText);
-                lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 10px; -fx-font-weight: bold;"
-                                + " -fx-font-family: 'Consolas', monospace;");
+                lbl.setStyle("-fx-text-fill: #8f9284; -fx-font-size: 10px; -fx-font-weight: bold;"
+                        + " -fx-font-family: 'Consolas', monospace;");
                 return new VBox(8, lbl, field);
         }
 
-        static TextField styledField(String value, boolean large) {
+        /** Helper to create standard text fields. */
+        private static TextField styledField(String value, boolean large) {
                 TextField field = new TextField(value);
                 String base = fieldStyle(false, large);
                 String focused = fieldStyle(true, large);
                 field.setStyle(base);
-                field.focusedProperty()
-                                .addListener((obs, was, isFocused) -> field.setStyle(isFocused ? focused : base));
+                field.focusedProperty().addListener((obs, was, isFocused) -> field.setStyle(isFocused ? focused : base));
                 return field;
         }
 
-        static String fieldStyle(boolean focused, boolean large) {
+        /**
+         * Reusable CSS style generator for text inputs.
+         *
+         * @param focused Indicates if the field is currently selected by the user.
+         * @param large   Indicates if the font size should be increased for emphasis.
+         * @return A raw CSS string.
+         */
+        public static String fieldStyle(boolean focused, boolean large) {
                 String border = focused ? "#556b2f" : "#45483c";
                 String size = large ? "20px" : "13px";
                 String weight = large ? "-fx-font-weight: bold;" : "";
-                return "-fx-background-color: #1e201c; -fx-border-color: transparent transparent " + border
-                                + " transparent;"
-                                + " -fx-border-width: 0 0 2 0; -fx-border-radius: 0; -fx-background-radius: 0;"
-                                + " -fx-text-fill: #e3e3dc; -fx-font-size: " + size + "; " + weight
-                                + " -fx-font-family: 'Consolas', monospace;"
-                                + " -fx-padding: 10 12 8 12; -fx-prompt-text-fill: rgba(143,146,132,0.35);";
+                return "-fx-background-color: #1e201c; -fx-border-color: transparent transparent " + border + " transparent;"
+                        + " -fx-border-width: 0 0 2 0; -fx-border-radius: 0; -fx-background-radius: 0;"
+                        + " -fx-text-fill: #e3e3dc; -fx-font-size: " + size + "; " + weight
+                        + " -fx-font-family: 'Consolas', monospace;"
+                        + " -fx-padding: 10 12 8 12; -fx-prompt-text-fill: rgba(143,146,132,0.35);";
         }
 
+        /**
+         * Standardized "X" close button used across all application modals.
+         *
+         * @param stage The JavaFX Stage to close when clicked.
+         * @return A configured Button.
+         */
         public static Button windowCloseBtn(Stage stage) {
                 Button btn = new Button("✕");
                 btn.setPrefSize(36, 40);
                 String base = "-fx-background-color: transparent; -fx-text-fill: rgba(143,146,132,0.6);"
-                                + " -fx-font-size: 12px; -fx-cursor: hand; -fx-background-radius: 0; -fx-border-color: transparent;";
+                        + " -fx-font-size: 12px; -fx-cursor: hand; -fx-background-radius: 0; -fx-border-color: transparent;";
                 btn.setStyle(base);
                 btn.setOnMouseEntered(e -> btn.setStyle(
-                                "-fx-background-color: rgba(147,0,10,0.6); -fx-text-fill: white;"
-                                                + " -fx-font-size: 12px; -fx-cursor: hand; -fx-background-radius: 0; -fx-border-color: transparent;"));
+                        "-fx-background-color: rgba(147,0,10,0.6); -fx-text-fill: white;"
+                                + " -fx-font-size: 12px; -fx-cursor: hand; -fx-background-radius: 0; -fx-border-color: transparent;"));
                 btn.setOnMouseExited(e -> btn.setStyle(base));
                 btn.setOnAction(e -> stage.close());
                 return btn;
         }
 
+        /**
+         * Standardized "CANCEL" bottom-bar button used across all modals.
+         *
+         * @param stage The JavaFX Stage to close when clicked.
+         * @return A configured Button.
+         */
         public static Button cancelButton(Stage stage) {
                 Button btn = new Button("CANCEL");
                 btn.setPrefHeight(44);
                 btn.setPadding(new Insets(0, 24, 0, 24));
                 String base = "-fx-background-color: transparent; -fx-text-fill: #c8c6c6;"
-                                + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
-                                + " -fx-cursor: hand; -fx-background-radius: 0;"
-                                + " -fx-border-color: rgba(69,72,60,0.3); -fx-border-width: 2;";
+                        + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
+                        + " -fx-cursor: hand; -fx-background-radius: 0;"
+                        + " -fx-border-color: rgba(69,72,60,0.3); -fx-border-width: 2;";
                 btn.setStyle(base);
                 btn.setOnMouseEntered(e -> btn.setStyle(base.replace("transparent; -fx-text-fill: #c8c6c6",
-                                "#292b26; -fx-text-fill: #e3e3dc")));
+                        "#292b26; -fx-text-fill: #e3e3dc")));
                 btn.setOnMouseExited(e -> btn.setStyle(base));
                 btn.setOnAction(e -> stage.close());
                 return btn;
         }
 
+        /**
+         * Centers a spawned Modal stage relative to the application's parent window.
+         *
+         * @param stage The child modal stage.
+         * @param owner The parent application window.
+         */
         public static void centre(Stage stage, Window owner) {
                 if (owner != null) {
                         stage.setX(owner.getX() + owner.getWidth() / 2 - stage.getWidth() / 2);

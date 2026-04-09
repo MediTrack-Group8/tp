@@ -61,7 +61,7 @@ public class UpdateStatusCommand extends Command {
      */
     @Override
     public CommandResult execute(Model model) throws CommandException {
-        Role currentRole = Session.getInstance().getRole();
+        Role currentRole = model.getSession().getRole();
 
         if (currentRole == Role.FIELD_MEDIC && newStatus != Status.CASUALTY) {
             throw new CommandException("Field Medics are only authorized to update status to CASUALTY.");

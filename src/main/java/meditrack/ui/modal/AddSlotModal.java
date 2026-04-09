@@ -28,7 +28,10 @@ import javafx.stage.Window;
 import meditrack.model.DutySlot;
 import meditrack.model.DutyType;
 
-/** Add-duty-slot modal matching the app design system. */
+/**
+ * A modal dialog that allows commanders to manually schedule a new duty slot.
+ * Ensures time formatting is correctly parsed before creating the domain object.
+ */
 public class AddSlotModal {
 
     private static final String SURFACE_LOW  = "#1a1c18";
@@ -42,12 +45,12 @@ public class AddSlotModal {
     private static final String ERROR        = "#ffb4ab";
 
     /**
-     * Shows the add-slot modal and calls onSuccess with the new DutySlot if confirmed.
+     * Displays the manual duty scheduling modal.
      *
-     * @param selectedDate date for the new slot
-     * @param fitNames     names of FIT personnel available for assignment
-     * @param owner        parent window for centering
-     * @param onSuccess    callback receiving the created DutySlot
+     * @param selectedDate The calendar date the new duty slot will fall on.
+     * @param fitNames     A list of names of FIT personnel available for assignment.
+     * @param owner        The parent window for centering.
+     * @param onSuccess    A callback function receiving the fully validated DutySlot.
      */
     public static void show(LocalDate selectedDate, List<String> fitNames,
                             Window owner, Consumer<DutySlot> onSuccess) {
@@ -146,8 +149,7 @@ public class AddSlotModal {
         stage.showAndWait();
     }
 
-    // Helpers
-
+    /** Helper to generate the draggable title bar. */
     private static HBox buildTitleBar(Stage stage, String title) {
         HBox titleBar = new HBox(10);
         titleBar.setAlignment(Pos.CENTER_LEFT);
@@ -181,6 +183,7 @@ public class AddSlotModal {
         return titleBar;
     }
 
+    /** Helper to generate the action footer. */
     private static HBox buildFooter(Stage stage, String confirmText, Runnable onConfirm) {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_RIGHT);
@@ -206,6 +209,7 @@ public class AddSlotModal {
         return footer;
     }
 
+    /** Constructs an informational warning bar to display context rules. */
     private static HBox buildInfoBar(String text) {
         HBox infoBar = new HBox(10);
         infoBar.setAlignment(Pos.CENTER_LEFT);
@@ -220,6 +224,7 @@ public class AddSlotModal {
         return infoBar;
     }
 
+    /** Generates consistent styles for text field labels. */
     private static Label fieldHeader(String text) {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 9px; -fx-font-weight: bold;"
@@ -227,10 +232,12 @@ public class AddSlotModal {
         return lbl;
     }
 
+    /** Builds a wrapped field container. */
     private static VBox fieldSection(String label, TextField field) {
         return EditSupplyModal.fieldSection(label, field);
     }
 
+    /** Creates an interactive text field. */
     private static TextField styledField(String prompt) {
         TextField field = new TextField();
         field.setPromptText(prompt);
@@ -242,6 +249,7 @@ public class AddSlotModal {
         return field;
     }
 
+    /** Configures the Duty Type dropdown menu. */
     private static ComboBox<DutyType> buildDutyTypeCombo() {
         ComboBox<DutyType> combo = new ComboBox<>(FXCollections.observableArrayList(DutyType.values()));
         combo.setPromptText("SELECT DUTY TYPE...");
@@ -249,7 +257,7 @@ public class AddSlotModal {
         combo.setStyle("-fx-background-color: #1e201c; -fx-border-color: #45483c;"
                 + " -fx-border-width: 1; -fx-border-radius: 0; -fx-background-radius: 0;"
                 + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
-        combo.setCellFactory(lv -> new ListCell<DutyType>() {
+        combo.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(DutyType dt, boolean empty) {
                 super.updateItem(dt, empty);
                 if (dt == null || empty) {
@@ -265,7 +273,7 @@ public class AddSlotModal {
                 setOnMouseExited(e -> setStyle(base));
             }
         });
-        combo.setButtonCell(new ListCell<DutyType>() {
+        combo.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(DutyType dt, boolean empty) {
                 super.updateItem(dt, empty);
                 if (dt == null || empty) {
@@ -282,6 +290,7 @@ public class AddSlotModal {
         return combo;
     }
 
+    /** Configures the available personnel dropdown menu. */
     private static ComboBox<String> buildNameCombo(List<String> names) {
         ComboBox<String> combo = new ComboBox<>(FXCollections.observableArrayList(names));
         combo.setPromptText("SELECT PERSONNEL...");
@@ -289,7 +298,7 @@ public class AddSlotModal {
         combo.setStyle("-fx-background-color: #1e201c; -fx-border-color: #45483c;"
                 + " -fx-border-width: 1; -fx-border-radius: 0; -fx-background-radius: 0;"
                 + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
-        combo.setCellFactory(lv -> new ListCell<String>() {
+        combo.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(String name, boolean empty) {
                 super.updateItem(name, empty);
                 if (name == null || empty) {
@@ -305,7 +314,7 @@ public class AddSlotModal {
                 setOnMouseExited(e -> setStyle(base));
             }
         });
-        combo.setButtonCell(new ListCell<String>() {
+        combo.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(String name, boolean empty) {
                 super.updateItem(name, empty);
                 if (name == null || empty) {

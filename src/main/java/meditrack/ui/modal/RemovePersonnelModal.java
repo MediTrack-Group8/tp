@@ -1,6 +1,5 @@
 package meditrack.ui.modal;
 
-import java.io.IOException;
 import java.util.function.Consumer;
 
 import javafx.geometry.Insets;
@@ -17,25 +16,38 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
+import meditrack.logic.Logic;
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.logic.commands.personnel.RemovePersonnelCommand;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Personnel;
-import meditrack.storage.StorageManager;
 
-/** Remove-personnel confirmation modal. */
+/**
+ * A modal dialog for confirming the irreversible deletion of a personnel record.
+ * Integrates with the Logic engine to ensure RBAC rules are enforced during deletion.
+ */
 public class RemovePersonnelModal {
 
     private static final String SURFACE_LOW  = "#1a1c18";
     private static final String SURFACE      = "#1e201c";
     private static final String SURFACE_HIGH = "#292b26";
-    private static final String OUTLINE_VAR  = "#45483c";
     private static final String ON_SURFACE   = "#e3e3dc";
     private static final String SECONDARY    = "#c8c6c6";
     private static final String ERROR        = "#ffb4ab";
     private static final String ERROR_DARK   = "#93000a";
 
-    public static void show(ModelManager model, StorageManager storage, Personnel personnel,
+    /**
+     * Displays the confirmation modal to permanently remove a personnel member.
+     *
+     * @param model         The application data model.
+     * @param logic         The logic engine used to execute the removal command.
+     * @param personnel     The target personnel object to be removed.
+     * @param oneBasedIndex The UI-facing 1-based index of the target personnel.
+     * @param owner         The parent application window to block while the modal is active.
+     * @param onSuccess     A callback function executed if the personnel is successfully deleted.
+     * @param onError       A callback function executed if the deletion fails.
+     */
+    public static void show(Model model, Logic logic, Personnel personnel,
                             int oneBasedIndex, Window owner,
                             Consumer<String> onSuccess, Consumer<String> onError) {
         Stage stage = new Stage();
@@ -131,11 +143,10 @@ public class RemovePersonnelModal {
         deleteBtn.setOnAction(e -> {
             errorLabel.setText("");
             try {
-                new RemovePersonnelCommand(oneBasedIndex).execute(model);
-                storage.saveMediTrackData(model.getMediTrack());
+                logic.executeCommand(new RemovePersonnelCommand(oneBasedIndex));
                 stage.close();
                 onSuccess.accept("Removed: " + personnel.getName());
-            } catch (CommandException | IOException ex) {
+            } catch (CommandException ex) {
                 errorLabel.setText("! " + ex.getMessage());
             }
         });

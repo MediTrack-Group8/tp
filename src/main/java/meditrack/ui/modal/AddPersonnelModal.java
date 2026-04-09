@@ -1,6 +1,5 @@
 package meditrack.ui.modal;
 
-import java.io.IOException;
 import java.util.function.Consumer;
 
 import javafx.collections.FXCollections;
@@ -21,44 +20,52 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
+import meditrack.logic.Logic;
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.logic.commands.personnel.AddPersonnelCommand;
 import meditrack.model.BloodGroup;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Role;
-import meditrack.model.Session;
 import meditrack.model.Status;
-import meditrack.storage.StorageManager;
 
-/** Add-personnel modal. */
+/**
+ * A modal dialog used to add new personnel records to the roster.
+ * Implements Role-Based Access Control (RBAC) to show/hide medical details
+ * based on the active session's clearance level.
+ */
 public class AddPersonnelModal {
 
     private static final String SURFACE_LOW  = "#1a1c18";
-    private static final String SURFACE      = "#1e201c";
     private static final String SURFACE_HIGH = "#292b26";
     private static final String PRIMARY      = "#b6d088";
     private static final String PRIMARY_CONT = "#556b2f";
     private static final String ON_PRIMARY   = "#233600";
     private static final String OUTLINE      = "#8f9284";
-    private static final String OUTLINE_VAR  = "#45483c";
     private static final String ERROR        = "#ffb4ab";
 
-    public static void show(ModelManager model, StorageManager storage, Window owner,
+    /**
+     * Displays the Add Personnel modal dialog.
+     *
+     * @param model     The application model to read the current session role.
+     * @param logic     The logic engine used to execute the add command and auto-save.
+     * @param owner     The parent window to block while this modal is open.
+     * @param onSuccess Callback executed when a personnel member is successfully added.
+     * @param onError   Callback executed when an error occurs during addition.
+     */
+    public static void show(Model model, Logic logic, Window owner,
                             Consumer<String> onSuccess, Consumer<String> onError) {
         Stage stage = new Stage();
         stage.initStyle(StageStyle.UNDECORATED);
         stage.initModality(Modality.WINDOW_MODAL);
         stage.initOwner(owner);
 
-        Role currentRole = Session.getInstance().getRole();
+        Role currentRole = model.getSession().getRole();
         boolean isPc = (currentRole == Role.PLATOON_COMMANDER);
         boolean isMo = (currentRole == Role.MEDICAL_OFFICER);
 
-        // Fields
         TextField nameField = styledField("ENTER FULL NAME...");
         ComboBox<Status> statusCombo = buildStatusCombo(isPc);
 
-        // Medical Officer-only fields
         ComboBox<BloodGroup> bloodGroupCombo = isMo ? buildBloodGroupCombo() : null;
         TextField allergiesField = isMo ? styledField("E.G. PENICILLIN, SULFA...") : null;
 
@@ -67,7 +74,24 @@ public class AddPersonnelModal {
         errorLabel.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 10px;"
                 + " -fx-font-family: 'Consolas', monospace;");
 
-        // Title bar
+        HBox titleBar = buildTitleBar(stage);
+        VBox body = buildBody(nameField, statusCombo, bloodGroupCombo, allergiesField, errorLabel, isMo);
+        HBox footer = buildFooter(stage, model, logic, nameField, statusCombo, bloodGroupCombo, allergiesField, errorLabel, onSuccess, onError);
+
+        VBox root = new VBox(0, titleBar, body, footer);
+        root.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: rgba(143,146,132,0.2);"
+                + " -fx-border-width: 1;");
+
+        double height = isMo ? 480 : 380;
+        Scene scene = new Scene(root, 560, height);
+        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        stage.setScene(scene);
+        stage.setOnShown(ev -> EditSupplyModal.centre(stage, owner));
+        stage.showAndWait();
+    }
+
+    /** Constructs the draggable title bar for the modal. */
+    private static HBox buildTitleBar(Stage stage) {
         HBox titleBar = new HBox(10);
         titleBar.setAlignment(Pos.CENTER_LEFT);
         titleBar.setPadding(new Insets(0, 8, 0, 14));
@@ -97,8 +121,11 @@ public class AddPersonnelModal {
             stage.setX(e.getScreenX() + drag[0]);
             stage.setY(e.getScreenY() + drag[1]);
         });
+        return titleBar;
+    }
 
-        // Form body
+    /** Constructs the main form layout. */
+    private static VBox buildBody(TextField nameField, ComboBox<Status> statusCombo, ComboBox<BloodGroup> bloodGroupCombo, TextField allergiesField, Label errorLabel, boolean isMo) {
         VBox body = new VBox(24);
         body.setPadding(new Insets(32, 36, 28, 36));
         body.setStyle("-fx-background-color: " + SURFACE_LOW + ";");
@@ -115,9 +142,9 @@ public class AddPersonnelModal {
         HBox.setHgrow(statusSection, Priority.ALWAYS);
         body.getChildren().add(row1);
 
-        // Medical Officer sees blood group + allergies row
         if (isMo) {
-            Label bgHdr = fieldHeader("BLOOD GROUP");
+            Label bgHdr = new Label("BLOOD GROUP");
+            bgHdr.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 9px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
             VBox bgSection = new VBox(8, bgHdr, bloodGroupCombo);
 
             VBox allergiesSection = EditSupplyModal.fieldSection("ALLERGIES", allergiesField);
@@ -140,8 +167,11 @@ public class AddPersonnelModal {
         infoBar.getChildren().add(infoLbl);
 
         body.getChildren().addAll(infoBar, errorLabel);
+        return body;
+    }
 
-        // Footer
+    /** Constructs the action buttons and handles submission logic. */
+    private static HBox buildFooter(Stage stage, Model model, Logic logic, TextField nameField, ComboBox<Status> statusCombo, ComboBox<BloodGroup> bloodGroupCombo, TextField allergiesField, Label errorLabel, Consumer<String> onSuccess, Consumer<String> onError) {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_RIGHT);
         footer.setPadding(new Insets(14, 20, 14, 20));
@@ -165,51 +195,36 @@ public class AddPersonnelModal {
             errorLabel.setText("");
             String name = nameField.getText().trim();
             if (name.isEmpty()) {
-                errorLabel.setText("! Name must not be blank.");
+                String msg = "Name must not be blank.";
+                errorLabel.setText("! " + msg);
+                onError.accept(msg);
                 return;
             }
             Status status = statusCombo.getValue();
             if (status == null) {
-                errorLabel.setText("! Please select a status.");
+                String msg = "Please select a status.";
+                errorLabel.setText("! " + msg);
+                onError.accept(msg);
                 return;
             }
             BloodGroup bloodGroup = (bloodGroupCombo != null) ? bloodGroupCombo.getValue() : null;
             String allergies = (allergiesField != null) ? allergiesField.getText().trim() : "";
+
             try {
-                new AddPersonnelCommand(name, status, bloodGroup, allergies).execute(model);
-                storage.saveMediTrackData(model.getMediTrack());
+                logic.executeCommand(new AddPersonnelCommand(name, status, bloodGroup, allergies));
                 stage.close();
                 onSuccess.accept("Personnel added: " + name);
-            } catch (CommandException | IOException ex) {
+            } catch (CommandException ex) {
                 errorLabel.setText("! " + ex.getMessage());
+                onError.accept(ex.getMessage());
             }
         });
 
         footer.getChildren().addAll(EditSupplyModal.cancelButton(stage), confirmBtn);
-
-        // Assemble
-        VBox root = new VBox(0, titleBar, body, footer);
-        root.setStyle("-fx-background-color: " + SURFACE_LOW + "; -fx-border-color: rgba(143,146,132,0.2);"
-                + " -fx-border-width: 1;");
-
-        // Taller height when Medical Officer to accommodate the extra row
-        double height = isMo ? 480 : 380;
-        Scene scene = new Scene(root, 560, height);
-        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-        stage.setScene(scene);
-        stage.setOnShown(ev -> EditSupplyModal.centre(stage, owner));
-        stage.showAndWait();
+        return footer;
     }
 
-    // Helpers
-
-    private static Label fieldHeader(String text) {
-        Label lbl = new Label(text);
-        lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 9px; -fx-font-weight: bold;"
-                + " -fx-font-family: 'Consolas', monospace;");
-        return lbl;
-    }
-
+    /** Applies basic text field styling. */
     private static TextField styledField(String prompt) {
         TextField field = new TextField();
         field.setPromptText(prompt);
@@ -221,14 +236,21 @@ public class AddPersonnelModal {
         return field;
     }
 
-    private static ComboBox<BloodGroup> buildBloodGroupCombo() {
-        ComboBox<BloodGroup> combo = new ComboBox<>(FXCollections.observableArrayList(BloodGroup.values()));
-        combo.setValue(BloodGroup.UNKNOWN);
+    /** Injects standardized combobox styling to prevent duplication warnings. */
+    private static <T> void applyComboStyle(ComboBox<T> combo) {
         combo.setMaxWidth(Double.MAX_VALUE);
         combo.setStyle("-fx-background-color: #1e201c; -fx-border-color: #45483c;"
                 + " -fx-border-width: 1; -fx-border-radius: 0; -fx-background-radius: 0;"
                 + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
-        combo.setCellFactory(lv -> new ListCell<BloodGroup>() {
+    }
+
+    /** Builds the MO-exclusive Blood Group dropdown. */
+    private static ComboBox<BloodGroup> buildBloodGroupCombo() {
+        ComboBox<BloodGroup> combo = new ComboBox<>(FXCollections.observableArrayList(BloodGroup.values()));
+        combo.setValue(BloodGroup.UNKNOWN);
+        applyComboStyle(combo);
+
+        combo.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(BloodGroup bg, boolean empty) {
                 super.updateItem(bg, empty);
                 if (bg == null || empty) {
@@ -244,7 +266,7 @@ public class AddPersonnelModal {
                 setOnMouseExited(e -> setStyle(base));
             }
         });
-        combo.setButtonCell(new ListCell<BloodGroup>() {
+        combo.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(BloodGroup bg, boolean empty) {
                 super.updateItem(bg, empty);
                 if (bg == null || empty) {
@@ -261,17 +283,16 @@ public class AddPersonnelModal {
         return combo;
     }
 
+    /** Builds the dynamic status dropdown based on RBAC rules. */
     private static ComboBox<Status> buildStatusCombo(boolean isPc) {
         ComboBox<Status> combo = isPc
                 ? new ComboBox<>(FXCollections.observableArrayList(Status.PENDING))
                 : new ComboBox<>(FXCollections.observableArrayList(Status.values()));
         combo.setValue(Status.PENDING);
         if (isPc) combo.setDisable(true);
-        combo.setMaxWidth(Double.MAX_VALUE);
-        combo.setStyle("-fx-background-color: #1e201c; -fx-border-color: #45483c;"
-                + " -fx-border-width: 1; -fx-border-radius: 0; -fx-background-radius: 0;"
-                + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
-        combo.setCellFactory(lv -> new ListCell<Status>() {
+        applyComboStyle(combo);
+
+        combo.setCellFactory(lv -> new ListCell<>() {
             @Override protected void updateItem(Status s, boolean empty) {
                 super.updateItem(s, empty);
                 if (s == null || empty) { setText(null); setStyle("-fx-background-color: #1e201c;"); return; }
@@ -284,7 +305,7 @@ public class AddPersonnelModal {
                 setOnMouseExited(e -> setStyle(base));
             }
         });
-        combo.setButtonCell(new ListCell<Status>() {
+        combo.setButtonCell(new ListCell<>() {
             @Override protected void updateItem(Status s, boolean empty) {
                 super.updateItem(s, empty);
                 if (s == null || empty) {
@@ -301,13 +322,13 @@ public class AddPersonnelModal {
         return combo;
     }
 
+    /** Translates statuses into their respective UI colors. */
     private static String statusColor(Status s) {
         return switch (s) {
-            case FIT        -> "#b6d088";
-            case LIGHT_DUTY -> "#fbbc00";
-            case MC         -> "#fbbc00";
-            case CASUALTY   -> "#ffb4ab";
-            case PENDING    -> "#8f9284";
+            case FIT            -> "#b6d088";
+            case LIGHT_DUTY, MC -> "#fbbc00";
+            case CASUALTY       -> "#ffb4ab";
+            case PENDING        -> "#8f9284";
         };
     }
 }

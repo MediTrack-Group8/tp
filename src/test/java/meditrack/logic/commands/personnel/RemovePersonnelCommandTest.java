@@ -12,7 +12,6 @@ import meditrack.logic.commands.CommandResult;
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.model.ModelManager;
 import meditrack.model.Role;
-import meditrack.model.Session;
 import meditrack.model.Status;
 
 /**
@@ -25,14 +24,14 @@ public class RemovePersonnelCommandTest {
     @BeforeEach
     public void setUp() throws CommandException {
         modelManager = new ModelManager();
-        Session.getInstance().setRole(Role.MEDICAL_OFFICER);
+        modelManager.getSession().setRole(Role.MEDICAL_OFFICER);
         modelManager.addPersonnel("Alice", Status.FIT);
         modelManager.addPersonnel("Bob", Status.MC);
     }
 
     @Test
     public void execute_validIndex_success() throws CommandException {
-        RemovePersonnelCommand cmd = new RemovePersonnelCommand(1); // Target Alice
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(1);
 
         CommandResult result = cmd.execute(modelManager);
 
@@ -43,14 +42,14 @@ public class RemovePersonnelCommandTest {
 
     @Test
     public void execute_invalidIndexOutOfBounds_throwsCommandException() {
-        RemovePersonnelCommand cmd = new RemovePersonnelCommand(5); // Out of bounds
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(5);
 
         assertThrows(CommandException.class, () -> cmd.execute(modelManager));
     }
 
     @Test
     public void execute_invalidZeroIndex_throwsCommandException() {
-        RemovePersonnelCommand cmd = new RemovePersonnelCommand(0); // Zero index is invalid
+        RemovePersonnelCommand cmd = new RemovePersonnelCommand(0);
 
         assertThrows(CommandException.class, () -> cmd.execute(modelManager));
     }

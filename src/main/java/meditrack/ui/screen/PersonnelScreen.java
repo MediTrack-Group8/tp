@@ -1,17 +1,18 @@
 package meditrack.ui.screen;
 
-import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.Comparator;
-import java.util.stream.Collectors;
+
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -26,43 +27,42 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.beans.property.SimpleStringProperty;
 
+import meditrack.logic.Logic;
 import meditrack.logic.commands.exceptions.CommandException;
 import meditrack.logic.commands.personnel.UpdateStatusCommand;
-import meditrack.model.ModelManager;
+import meditrack.model.Model;
 import meditrack.model.Personnel;
 import meditrack.model.Role;
-import meditrack.model.Session;
 import meditrack.model.Status;
-import meditrack.storage.StorageManager;
 import meditrack.ui.modal.AddPersonnelModal;
 import meditrack.ui.modal.RemovePersonnelModal;
 
 /**
  * Personnel Management screen.
+ * Implements strict RBAC to determine which columns and actions are available based on the session's Role.
  */
 public class PersonnelScreen extends VBox {
 
-    private static final String BG = "#121410";
-    private static final String SURFACE_LOW = "#1a1c18";
-    private static final String SURFACE = "#1e201c";
-    private static final String SURFACE_HIGH = "#292b26";
+    private static final String BG              = "#121410";
+    private static final String SURFACE_LOW     = "#1a1c18";
+    private static final String SURFACE         = "#1e201c";
+    private static final String SURFACE_HIGH    = "#292b26";
     private static final String SURFACE_HIGHEST = "#333531";
-    private static final String SURFACE_BRIGHT = "#383a35";
-    private static final String PRIMARY = "#b6d088";
-    private static final String PRIMARY_CONT = "#556b2f";
-    private static final String ON_PRIMARY = "#233600";
-    private static final String OUTLINE = "#8f9284";
-    private static final String OUTLINE_VAR = "#45483c";
-    private static final String ON_SURFACE = "#e3e3dc";
-    private static final String SECONDARY = "#c8c6c6";
-    private static final String WARNING = "#fbbc00";
-    private static final String ERROR = "#ffb4ab";
-    private static final int PAGE_SIZE = 15;
+    private static final String SURFACE_BRIGHT  = "#383a35";
+    private static final String PRIMARY         = "#b6d088";
+    private static final String PRIMARY_CONT    = "#556b2f";
+    private static final String ON_PRIMARY      = "#233600";
+    private static final String OUTLINE         = "#8f9284";
+    private static final String OUTLINE_VAR     = "#45483c";
+    private static final String ON_SURFACE      = "#e3e3dc";
+    private static final String SECONDARY       = "#c8c6c6";
+    private static final String WARNING         = "#fbbc00";
+    private static final String ERROR           = "#ffb4ab";
+    private static final int    PAGE_SIZE       = 15;
 
-    private final ModelManager model;
-    private final StorageManager storage;
+    private final Model model;
+    private final Logic logic;
     private final boolean canAddDelete;
     private final boolean canEditStatus;
 
@@ -84,26 +84,27 @@ public class PersonnelScreen extends VBox {
 
     /**
      * Constructs the PersonnelScreen.
+     * Fully decoupled to rely only on abstract interfaces.
      *
-     * @param model   data model managing personnel records
-     * @param storage persists data changes after edits
+     * @param model The application data model.
+     * @param logic The logic engine used for executing commands.
      */
-    public PersonnelScreen(ModelManager model, StorageManager storage) {
+    public PersonnelScreen(Model model, Logic logic) {
         this.model = model;
-        this.storage = storage;
-        Role currentRole = Session.getInstance().getRole();
+        this.logic = logic;
+        Role currentRole = model.getSession().getRole();
         this.canAddDelete = (currentRole == Role.MEDICAL_OFFICER || currentRole == Role.PLATOON_COMMANDER);
         this.canEditStatus = (currentRole == Role.MEDICAL_OFFICER || currentRole == Role.FIELD_MEDIC);
         buildUi();
         refresh();
     }
 
+    /** Assembles the core layout structure of the screen. */
     private void buildUi() {
         setSpacing(0);
         setStyle("-fx-background-color: " + BG + ";");
         VBox.setVgrow(this, Priority.ALWAYS);
 
-        // Reset to page 0 whenever the filtered result set changes 
         filteredData.addListener((javafx.collections.ListChangeListener<Personnel>) c -> {
             currentPage = 0;
             updatePage();
@@ -115,8 +116,7 @@ public class PersonnelScreen extends VBox {
         getChildren().addAll(buildHeader(), tableSection, buildFooter());
     }
 
-    // Header
-
+    /** Builds the top navigation and search header. */
     private HBox buildHeader() {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
@@ -128,8 +128,7 @@ public class PersonnelScreen extends VBox {
         Label title = new Label("PERSONNEL MANAGEMENT");
         title.setStyle("-fx-text-fill: " + ON_SURFACE + "; -fx-font-size: 20px; -fx-font-weight: bold;"
                 + " -fx-font-family: 'Consolas', 'Courier New', monospace;");
-        String roleHint = buildRoleHint();
-        Label subtitle = new Label(roleHint);
+        Label subtitle = new Label(buildRoleHint());
         subtitle.setStyle("-fx-text-fill: " + SECONDARY + "; -fx-font-size: 10px;"
                 + " -fx-font-family: 'Consolas', monospace;");
         titleArea.getChildren().addAll(title, subtitle);
@@ -137,7 +136,6 @@ public class PersonnelScreen extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Search bar
         HBox searchBar = new HBox(6);
         searchBar.setAlignment(Pos.CENTER_LEFT);
         searchBar.setPadding(new Insets(0, 12, 0, 12));
@@ -168,8 +166,9 @@ public class PersonnelScreen extends VBox {
         return header;
     }
 
+    /** Returns context-aware subtitle text based on the user's role. */
     private String buildRoleHint() {
-        Role role = Session.getInstance().getRole();
+        Role role = model.getSession().getRole();
         return switch (role) {
             case FIELD_MEDIC -> "Showing FIT and CASUALTY personnel. You may flag CASUALTY status.";
             case MEDICAL_OFFICER -> "Full access.";
@@ -178,6 +177,7 @@ public class PersonnelScreen extends VBox {
         };
     }
 
+    /** Generates the Add Personnel button. */
     private Button buildAddButton() {
         String normal = "-fx-background-color: " + PRIMARY_CONT + "; -fx-text-fill: white;"
                 + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
@@ -195,9 +195,7 @@ public class PersonnelScreen extends VBox {
         return btn;
     }
 
-    // Table
-
-    @SuppressWarnings("unchecked")
+    /** Builds the core TableView structure. */
     private VBox buildTableSection() {
         table.setItems(pageItems);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -219,35 +217,32 @@ public class PersonnelScreen extends VBox {
         return section;
     }
 
+    /** Applies CSS hacks to override default JavaFX table header aesthetics. */
     private void styleTableHeaders() {
         table.skinProperty().addListener((obs, old, skin) -> {
             if (skin != null)
                 Platform.runLater(() -> {
-                    javafx.scene.Node hdrBg = table.lookup(".column-header-background");
-                    if (hdrBg != null)
-                        hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
+                    Node hdrBg = table.lookup(".column-header-background");
+                    if (hdrBg != null) hdrBg.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
                     table.lookupAll(".column-header").forEach(n -> n.setStyle(
                             "-fx-background-color: transparent; -fx-border-color: transparent transparent "
                                     + OUTLINE_VAR + " transparent; -fx-border-width: 0 0 1 0;"));
                     table.lookupAll(".column-header .label").forEach(n -> n.setStyle(
                             "-fx-text-fill: " + OUTLINE + "; -fx-font-size: 10px; -fx-font-weight: bold;"
                                     + " -fx-font-family: 'Consolas', monospace;"));
-                    javafx.scene.Node filler = table.lookup(".filler");
-                    if (filler != null)
-                        filler.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
+                    Node filler = table.lookup(".filler");
+                    if (filler != null) filler.setStyle("-fx-background-color: " + SURFACE_HIGH + ";");
                 });
         });
     }
 
+    /** Creates custom row styling to highlight selected and CASUALTY personnel. */
     private void buildRowFactory() {
-        table.setRowFactory(tv -> new TableRow<Personnel>() {
+        table.setRowFactory(tv -> new TableRow<>() {
             {
                 selectedProperty().addListener((obs, wasSelected, isSelected) -> {
                     Personnel item = getItem();
-                    if (item == null || isEmpty()) {
-                        return;
-                    }
-                    applyRowStyle(item, isSelected);
+                    if (item != null && !isEmpty()) applyRowStyle(item, isSelected);
                 });
             }
 
@@ -271,38 +266,35 @@ public class PersonnelScreen extends VBox {
                 }
                 applyRowStyle(item, isSelected());
                 setOnMouseEntered(e -> {
-                    if (!isSelected()) {
-                        setStyle("-fx-background-color: " + SURFACE_BRIGHT + ";");
-                    }
+                    if (!isSelected()) setStyle("-fx-background-color: " + SURFACE_BRIGHT + ";");
                 });
                 setOnMouseExited(e -> applyRowStyle(item, isSelected()));
             }
         });
     }
 
-    @SuppressWarnings("unchecked")
+    /** Injects the required columns based on RBAC visibility rules. */
     private void buildColumns() {
         table.getColumns().addAll(
                 buildIndexColumn(),
                 buildNameColumn(),
                 buildStatusColumn());
 
-        // Blood group and allergies are only relevant in the Medical Officer view
-        if (Session.getInstance().getRole() == Role.MEDICAL_OFFICER) {
+        if (model.getSession().getRole() == Role.MEDICAL_OFFICER) {
             table.getColumns().addAll(buildBloodGroupColumn(), buildAllergiesColumn());
         }
     }
 
+    /** Builds the numbered index column. */
     private TableColumn<Personnel, String> buildIndexColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("#");
         col.setMinWidth(50);
         col.setMaxWidth(50);
-        // Display global position across all pages
         col.setCellValueFactory(cd -> {
             int pageIdx = cd.getTableView().getItems().indexOf(cd.getValue());
             return new SimpleStringProperty(String.valueOf(currentPage * PAGE_SIZE + pageIdx + 1));
         });
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             @Override
             protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
@@ -325,10 +317,11 @@ public class PersonnelScreen extends VBox {
         return col;
     }
 
+    /** Builds the personnel name column. */
     private TableColumn<Personnel, String> buildNameColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("NAME");
         col.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getName()));
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Region dot = new Region();
             private final Label lbl = new Label();
             private final HBox box = new HBox(10, dot, lbl);
@@ -337,7 +330,6 @@ public class PersonnelScreen extends VBox {
                 dot.setMaxSize(8, 8);
                 box.setAlignment(Pos.CENTER_LEFT);
             }
-
             @Override
             protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
@@ -347,10 +339,7 @@ public class PersonnelScreen extends VBox {
                     return;
                 }
                 int idx = getIndex();
-                if (idx < 0 || idx >= getTableView().getItems().size()) {
-                    setGraphic(null);
-                    return;
-                }
+                if (idx < 0 || idx >= getTableView().getItems().size()) return;
                 String color = statusColor(getTableView().getItems().get(idx).getStatus());
                 dot.setStyle("-fx-background-color: " + color + ";");
                 lbl.setText(v.toUpperCase());
@@ -363,6 +352,7 @@ public class PersonnelScreen extends VBox {
         return col;
     }
 
+    /** Builds the personnel status column. */
     private TableColumn<Personnel, String> buildStatusColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("STATUS");
         col.setMinWidth(160);
@@ -370,12 +360,9 @@ public class PersonnelScreen extends VBox {
 
         if (!canEditStatus) {
             col.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getStatus().toString()));
-            col.setCellFactory(c -> new TableCell<Personnel, String>() {
+            col.setCellFactory(c -> new TableCell<>() {
                 private final Label badge = new Label();
-                {
-                    badge.setPadding(new Insets(3, 10, 3, 10));
-                }
-
+                { badge.setPadding(new Insets(3, 10, 3, 10)); }
                 @Override
                 protected void updateItem(String v, boolean empty) {
                     super.updateItem(v, empty);
@@ -403,10 +390,10 @@ public class PersonnelScreen extends VBox {
         } else {
             col.setCellFactory(c -> buildEditableStatusCell());
         }
-
         return col;
     }
 
+    /** Builds the blood group column. */
     private TableColumn<Personnel, String> buildBloodGroupColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("BLOOD GROUP");
         col.setMinWidth(110);
@@ -415,12 +402,9 @@ public class PersonnelScreen extends VBox {
             meditrack.model.BloodGroup bg = cd.getValue().getBloodGroup();
             return new SimpleStringProperty(bg != null ? bg.display() : "—");
         });
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label badge = new Label();
-            {
-                badge.setPadding(new Insets(3, 10, 3, 10));
-            }
-
+            { badge.setPadding(new Insets(3, 10, 3, 10)); }
             @Override
             protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
@@ -441,15 +425,15 @@ public class PersonnelScreen extends VBox {
         return col;
     }
 
+    /** Builds the allergies column. */
     private TableColumn<Personnel, String> buildAllergiesColumn() {
         TableColumn<Personnel, String> col = new TableColumn<>("ALLERGIES");
         col.setCellValueFactory(cd -> {
             String allergies = cd.getValue().getAllergies();
             return new SimpleStringProperty(allergies.isBlank() ? "NONE" : allergies.toUpperCase());
         });
-        col.setCellFactory(c -> new TableCell<Personnel, String>() {
+        col.setCellFactory(c -> new TableCell<>() {
             private final Label lbl = new Label();
-
             @Override
             protected void updateItem(String v, boolean empty) {
                 super.updateItem(v, empty);
@@ -470,13 +454,13 @@ public class PersonnelScreen extends VBox {
         return col;
     }
 
-    @SuppressWarnings("unchecked")
+    /** Creates an interactive dropdown cell to execute UpdateStatusCommands natively in the table. */
     private TableCell<Personnel, String> buildEditableStatusCell() {
-        ObservableList<Status> options = (Session.getInstance().getRole() == Role.FIELD_MEDIC)
+        ObservableList<Status> options = (model.getSession().getRole() == Role.FIELD_MEDIC)
                 ? FXCollections.observableArrayList(Status.FIT, Status.CASUALTY)
                 : FXCollections.observableArrayList(Status.values());
 
-        return new TableCell<Personnel, String>() {
+        return new TableCell<>() {
             private final ComboBox<Status> combo = new ComboBox<>(options);
             private boolean isUpdating = false;
 
@@ -486,26 +470,21 @@ public class PersonnelScreen extends VBox {
 
                 combo.setOnAction(e -> {
                     if (isUpdating) return;
-
                     Personnel p = getTableRow().getItem();
                     Status newStatus = combo.getValue();
-                    if (p == null || newStatus == null) return;
-                    if (p.getStatus() == newStatus) return;
+                    if (p == null || newStatus == null || p.getStatus() == newStatus) return;
 
                     int durationDays = 0;
-
                     if (newStatus == Status.MC || newStatus == Status.LIGHT_DUTY) {
                         TextInputDialog dialog = new TextInputDialog("3");
                         dialog.setTitle("Medical Status Duration");
                         dialog.setHeaderText("Set duration for " + newStatus.name().replace("_", " "));
                         dialog.setContentText("Enter number of days:");
-
                         dialog.getDialogPane().setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + OUTLINE_VAR + "; -fx-border-width: 1;");
                         dialog.getEditor().setStyle("-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + ON_SURFACE + "; -fx-font-family: 'Consolas', monospace;");
                         dialog.getDialogPane().lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: " + SECONDARY + "; -fx-font-family: 'Consolas', monospace;"));
 
                         Optional<String> result = dialog.showAndWait();
-
                         if (result.isPresent()) {
                             try {
                                 durationDays = Integer.parseInt(result.get().trim());
@@ -523,9 +502,8 @@ public class PersonnelScreen extends VBox {
 
                     int idx = model.getFilteredPersonnelList(null).indexOf(p) + 1;
                     try {
-                        new UpdateStatusCommand(idx, newStatus, durationDays).execute(model);
+                        logic.executeCommand(new UpdateStatusCommand(idx, newStatus, durationDays));
                         setFeedback("Status updated for " + p.getName() + ".", false);
-                        saveData();
                         refresh();
                     } catch (CommandException ex) {
                         setFeedback("Error: " + ex.getMessage(), true);
@@ -558,8 +536,35 @@ public class PersonnelScreen extends VBox {
         };
     }
 
-    // Footer
+    /** Applies specific styling to the interactive status dropdown. */
+    private void styleStatusCombo(ComboBox<Status> combo) {
+        combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + OUTLINE_VAR + ";"
+                + " -fx-border-width: 1; -fx-border-radius: 0; -fx-background-radius: 0;"
+                + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
+        combo.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Status s, boolean empty) {
+                super.updateItem(s, empty);
+                if (s == null || empty) {
+                    setText(null);
+                    setStyle("-fx-background-color: " + SURFACE + ";");
+                    return;
+                }
+                setText(s.toString().replace("_", " "));
+                String color = statusColor(s);
+                String base = "-fx-background-color: " + SURFACE + "; -fx-text-fill: " + color + ";"
+                        + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-padding: 6 10 6 10;";
+                setStyle(base);
+                setOnMouseEntered(e -> setStyle(base.replace(SURFACE + ";", SURFACE_HIGH + ";")));
+                setOnMouseExited(e -> {
+                    if (!isSelected()) setStyle(base);
+                });
+            }
+        });
+    }
 
+    /** Builds the footer containing pagination and system status. */
     private HBox buildFooter() {
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
@@ -568,7 +573,7 @@ public class PersonnelScreen extends VBox {
         footer.setMinHeight(44);
         footer.setStyle("-fx-background-color: " + SURFACE_HIGHEST + ";");
 
-        boolean isMedicalOfficer = (Session.getInstance().getRole() == Role.MEDICAL_OFFICER);
+        boolean isMedicalOfficer = (model.getSession().getRole() == Role.MEDICAL_OFFICER);
 
         totalLabel = statLabel("TOTAL: 0", SECONDARY);
         fitLabel = statLabel("FIT: 0", PRIMARY);
@@ -602,16 +607,11 @@ public class PersonnelScreen extends VBox {
         feedbackLabel = new Label();
         feedbackLabel.setStyle("-fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;");
 
-        if (!isMedicalOfficer) {
-            footer.getChildren().addAll(totalLabel, fitLabel, alertLabel);
-        }
-
+        if (!isMedicalOfficer) footer.getChildren().addAll(totalLabel, fitLabel, alertLabel);
         footer.getChildren().addAll(spacer, prevBtn, pageLabel, nextBtn);
 
         if (canAddDelete) {
-            if (!isMedicalOfficer) {
-                footer.getChildren().add(feedbackLabel);
-            }
+            if (!isMedicalOfficer) footer.getChildren().add(feedbackLabel);
             footer.getChildren().add(buildRemoveButton());
         } else if (!isMedicalOfficer) {
             footer.getChildren().add(feedbackLabel);
@@ -620,6 +620,7 @@ public class PersonnelScreen extends VBox {
         return footer;
     }
 
+    /** Builds the Remove Personnel button. */
     private Button buildRemoveButton() {
         String base = "-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + ERROR + ";"
                 + " -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
@@ -639,8 +640,7 @@ public class PersonnelScreen extends VBox {
         return btn;
     }
 
-    // Pagination
-
+    /** Computes the current sublist for pagination display. */
     private void updatePage() {
         int from = currentPage * PAGE_SIZE;
         int size = sortedData.size();
@@ -649,16 +649,15 @@ public class PersonnelScreen extends VBox {
         updatePaginationControls();
     }
 
+    /** Adjusts pagination UI limits based on dataset size. */
     private void updatePaginationControls() {
         int totalPages = Math.max(1, (int) Math.ceil((double) sortedData.size() / PAGE_SIZE));
-        if (pageLabel != null)
-            pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
-        if (prevBtn != null)
-            prevBtn.setDisable(currentPage == 0);
-        if (nextBtn != null)
-            nextBtn.setDisable(currentPage >= totalPages - 1);
+        if (pageLabel != null) pageLabel.setText("PAGE " + (currentPage + 1) + " / " + totalPages);
+        if (prevBtn != null) prevBtn.setDisable(currentPage == 0);
+        if (nextBtn != null) nextBtn.setDisable(currentPage >= totalPages - 1);
     }
 
+    /** Styles a pagination button. */
     private Button pageNavBtn(String text) {
         String base = "-fx-background-color: " + SURFACE_HIGH + "; -fx-text-fill: " + SECONDARY + ";"
                 + " -fx-font-size: 10px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;"
@@ -673,70 +672,44 @@ public class PersonnelScreen extends VBox {
         return btn;
     }
 
-    // Actions
-
-    /**
-     * Opens the add-personnel modal and executes the resulting command.
-     */
+    /** Opens the add-personnel modal overlay. */
     private void openAddModal() {
-        AddPersonnelModal.show(model, storage, getScene().getWindow(),
-                msg -> {
-                    setFeedback(msg, false);
-                    refresh();
-                },
+        AddPersonnelModal.show(model, logic, getScene().getWindow(),
+                msg -> { setFeedback(msg, false); refresh(); },
                 msg -> setFeedback(msg, true));
     }
 
-    /**
-     * Opens the remove-personnel modal for the currently selected row.
-     */
+    /** Opens the remove-personnel modal for the currently selected row. */
     private void openRemoveModal() {
         Personnel selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             setFeedback("Select a row to remove.", true);
             return;
         }
-        // Look up position in the full model list to get the correct 1-based index
         int idx = model.getFilteredPersonnelList(null).indexOf(selected) + 1;
-        RemovePersonnelModal.show(model, storage, selected, idx, getScene().getWindow(),
-                msg -> {
-                    setFeedback(msg, false);
-                    refresh();
-                },
+        RemovePersonnelModal.show(model, logic, selected, idx, getScene().getWindow(),
+                msg -> { setFeedback(msg, false); refresh(); },
                 msg -> setFeedback(msg, true));
     }
 
     /**
-     * Persists the current model state to disk.
-     */
-    private void saveData() {
-        try {
-            storage.saveMediTrackData(model.getMediTrack());
-        } catch (IOException ex) {
-            setFeedback("Warning: could not save — " + ex.getMessage(), true);
-        }
-    }
-
-    // Refresh
-
-    /**
-     * Reloads the table and footer stats from the model.
+     * Reloads the table and footer statistics based on the latest abstract model state.
      */
     public void refresh() {
-        Role currentRole = Session.getInstance().getRole();
+        Role currentRole = model.getSession().getRole();
         List<Personnel> all = model.getFilteredPersonnelList(null);
 
         List<Personnel> visible = (currentRole == Role.FIELD_MEDIC)
                 ? all.stream()
-                        .filter(p -> p.getStatus() == Status.FIT || p.getStatus() == Status.CASUALTY)
-                        .collect(Collectors.toList())
+                .filter(p -> p.getStatus() == Status.FIT || p.getStatus() == Status.CASUALTY)
+                .toList()
                 : all;
 
         tableData.setAll(visible);
-        // filteredData listener resets page and calls updatePage() automatically
         updateFooterStats(visible);
     }
 
+    /** Refreshes footer health statistics. */
     private void updateFooterStats(List<Personnel> visible) {
         long fit = visible.stream().filter(p -> p.getStatus() == Status.FIT).count();
         long alert = visible.stream()
@@ -744,16 +717,12 @@ public class PersonnelScreen extends VBox {
                         || p.getStatus() == Status.LIGHT_DUTY
                         || p.getStatus() == Status.CASUALTY)
                 .count();
-        if (totalLabel != null)
-            totalLabel.setText("TOTAL: " + visible.size());
-        if (fitLabel != null)
-            fitLabel.setText("FIT: " + fit);
-        if (alertLabel != null)
-            alertLabel.setText("ATTENTION: " + alert);
+        if (totalLabel != null) totalLabel.setText("TOTAL: " + visible.size());
+        if (fitLabel != null) fitLabel.setText("FIT: " + fit);
+        if (alertLabel != null) alertLabel.setText("ATTENTION: " + alert);
     }
 
-    // Helpers
-
+    /** Returns the CSS background color based on status urgency. */
     private String rowBackground(Status status) {
         return switch (status) {
             case CASUALTY -> "rgba(147,0,10,0.15)";
@@ -762,44 +731,17 @@ public class PersonnelScreen extends VBox {
         };
     }
 
+    /** Returns the CSS text color based on status category. */
     private String statusColor(Status status) {
         return switch (status) {
             case FIT -> PRIMARY;
-            case LIGHT_DUTY -> WARNING;
-            case MC -> WARNING;
+            case LIGHT_DUTY, MC -> WARNING;
             case CASUALTY -> ERROR;
             case PENDING -> OUTLINE;
         };
     }
 
-    private void styleStatusCombo(ComboBox<Status> combo) {
-        combo.setMaxWidth(Double.MAX_VALUE);
-        combo.setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + OUTLINE_VAR + ";"
-                + " -fx-border-width: 1; -fx-border-radius: 0; -fx-background-radius: 0;"
-                + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
-        combo.setCellFactory(lv -> new ListCell<Status>() {
-            @Override
-            protected void updateItem(Status s, boolean empty) {
-                super.updateItem(s, empty);
-                if (s == null || empty) {
-                    setText(null);
-                    setStyle("-fx-background-color: " + SURFACE + ";");
-                    return;
-                }
-                setText(s.toString().replace("_", " "));
-                String color = statusColor(s);
-                String base = "-fx-background-color: " + SURFACE + "; -fx-text-fill: " + color + ";"
-                        + " -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-padding: 6 10 6 10;";
-                setStyle(base);
-                setOnMouseEntered(e -> setStyle(base.replace(SURFACE + ";", SURFACE_HIGH + ";")));
-                setOnMouseExited(e -> {
-                    if (!isSelected())
-                        setStyle(base);
-                });
-            }
-        });
-    }
-
+    /** Helper to generate static stat labels. */
     private Label statLabel(String text, String color) {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 10px; -fx-font-weight: bold;"
@@ -807,6 +749,7 @@ public class PersonnelScreen extends VBox {
         return lbl;
     }
 
+    /** Helper to generate the empty table placeholder. */
     private Label buildEmptyPlaceholder() {
         Label lbl = new Label("NO PERSONNEL ON RECORD");
         lbl.setStyle("-fx-text-fill: " + OUTLINE + "; -fx-font-size: 11px; -fx-font-weight: bold;"
@@ -814,15 +757,9 @@ public class PersonnelScreen extends VBox {
         return lbl;
     }
 
-    /**
-     * Updates the feedback label with a success or error message.
-     *
-     * @param message the text to display
-     * @param isError true for error styling, false for success
-     */
+    /** Prints feedback messages to the UI. */
     private void setFeedback(String message, boolean isError) {
-        if (feedbackLabel == null)
-            return;
+        if (feedbackLabel == null) return;
         feedbackLabel.setText(message);
         feedbackLabel.setStyle("-fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;"
                 + " -fx-text-fill: " + (isError ? ERROR : PRIMARY) + ";");
