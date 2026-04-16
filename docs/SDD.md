@@ -57,16 +57,15 @@ Built entirely in JavaFX. The UI relies heavily on modular builder methods to pr
 - Personnel: read-only personnel table for situational awareness
 
 **Medical Officer screens**
-- Personnel: full personnel table with add, remove, and inline status update (any status)
+- Personnel: full personnel table with add, edit (Blood Group & Allergies), remove, and inline status update (any status)
 - Medical Attention: filtered view of personnel requiring attention (PENDING, CASUALTY, MC, LIGHT_DUTY) with colour-coded status badges
 
 **Platoon Commander screens**
-- Personnel: personnel table with add (forced PENDING status) and remove
-- FIT Personnel: filtered view of FIT personnel with a live headcount
+- Personnel: full personnel table with add (forced PENDING status) and remove capabilities for roster management
 - Duty Roster: date-navigated duty schedule with add, edit, remove, clear day, and auto-generate actions
 
 **Logistics Officer screens**
-- Supply Levels: read-only view of the full inventory with low-stock highlighting
+- Supply Levels: full view of the inventory sorted by severity (Critical items first), with add, edit, and delete capabilities
 - Resupply Report: auto-generated report flagging low stock and items nearing expiry
 
 **Shared modal dialogs**
@@ -114,7 +113,7 @@ Key classes:
 - `ModelManager`: the concrete implementation of the `Model` interface that acts as the central point of access for all data operations.
 - `MediTrack`: the root data container, holding the supply list, personnel list, and duty slot list.
 - `Supply`: represents a medical supply item with a name (String), quantity (int), and expiryDate (LocalDate).
-- `Personnel`: represents a person with a name (String), status (Status), bloodGroup (BloodGroup), and allergies (String).
+- `Personnel`: represents a person with a name (String), status (Status), bloodGroup (BloodGroup), allergies (String), statusExpiryDate (LocalDate), and lastModified (LocalDateTime).
 - `DutySlot`: represents a scheduled duty assignment with date (LocalDate), startTime/endTime (LocalTime), dutyType (DutyType), and personnelName (String).
 - `Status`: enum with five values: `FIT`, `LIGHT_DUTY`, `MC`, `CASUALTY`, `PENDING`.
 - `Role`: enum with four values: `FIELD_MEDIC`, `MEDICAL_OFFICER`, `PLATOON_COMMANDER`, `LOGISTICS_OFFICER`.

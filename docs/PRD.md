@@ -153,9 +153,9 @@ Four roles are supported. Each role has a distinct set of permitted screens and 
 | Role | Permitted Actions |
 |---|---|
 | **Field Medic** | Add / edit / delete supplies; view expiring supplies; view FIT and CASUALTY personnel (read-only); flag personnel status as CASUALTY |
-| **Medical Officer** | Add / edit / delete personnel; update any personnel status; view medical attention dashboard (PENDING, CASUALTY, MC, LIGHT_DUTY) |
-| **Platoon Commander** | Add personnel (forced to PENDING status) / delete personnel; view FIT personnel; manage and auto-generate duty roster |
-| **Logistics Officer** | Add / edit / delete supplies; view supply levels; generate resupply report |
+| **Medical Officer** | Add / edit / delete personnel; edit personnel medical details (blood group/allergies); update any personnel status; view medical attention dashboard |
+| **Platoon Commander** | Add personnel (status forced to PENDING) / delete personnel; view full personnel roster; manage and auto-generate duty roster |
+| **Logistics Officer** | Add / edit / delete supplies; view supply levels sorted by severity; generate resupply report |
 
 Role restrictions are enforced at both the UI level (screens and buttons are hidden or disabled if not permitted) and the command level (commands reject execution if the active role is not in the allowed roles list).
 
