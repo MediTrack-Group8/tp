@@ -230,6 +230,17 @@ any other fields. Valid statuses include `FIT`, `LIGHT_DUTY`, `MC`, `CASUALTY`, 
 model.setPersonnelStatus(1, Status.LIGHT_DUTY);
 ```
 
+### `Model.setPersonnel(Personnel target, Personnel editedPersonnel)`
+* **Description:** Replaces an existing personnel record with an updated version containing edited details (such as Blood Group and Allergies), whilst retaining historical tracking data like status expiry dates. This operation automatically triggers a refresh on any observing UI components.
+* **Parameters / inputs:**
+  * `target` (Personnel): The original Personnel object currently in the roster.
+  * `editedPersonnel` (Personnel): The updated Personnel object containing the new data.
+* **Return values:** `void`
+* **Example usage:**
+```java
+model.setPersonnel(oldPersonnel, newPersonnel);
+```
+
 ### `Model.getFilteredPersonnelList(Status statusFilter)`
 * **Description:** Retrieves the list of personnel based on the provided status filter. Passing `null` returns
 the entire unfiltered roster. The UI may further filter this list based on the active session role
