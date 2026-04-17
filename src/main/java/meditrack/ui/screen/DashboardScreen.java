@@ -17,6 +17,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
+import meditrack.commons.core.Constants;
 import meditrack.model.Model;
 import meditrack.model.Personnel;
 import meditrack.model.Role;
@@ -158,15 +159,18 @@ public class DashboardScreen extends VBox {
 
         List<Supply> supplies = model.getFilteredSupplyList();
         int totalSupplies = supplies.size();
-        int critical = model.getLowStockSupplies(10).size();
-        int lowStock = model.getLowStockSupplies(50).size() - critical;
-        int expiringSoon = getExpiringAndExpired(30).size();
+        int critical = model.getLowStockSupplies(Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY).size();
+        int lowStock = model.getLowStockSupplies(Constants.LOW_STOCK_THRESHOLD_QUANTITY).size() - critical;
+        int expiringSoon = getExpiringAndExpired(Constants.EXPIRY_THRESHOLD_DAYS).size();
         int totalPersonnel = model.getPersonnelList().size();
 
         addStatCard(0, "TOTAL SUPPLIES", String.valueOf(totalSupplies), OLIVE_PALE, null);
-        addStatCard(1, "LOW STOCK (<50)", String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT, lowStock > 0 ? WARNING : null);
-        addStatCard(2, "EXPIRING SOON", String.valueOf(expiringSoon), expiringSoon > 0 ? WARNING : OLIVE_LIGHT, expiringSoon > 0 ? WARNING : null);
-        addStatCard(3, "CRITICAL (<10)", String.valueOf(critical), critical > 0 ? ERROR : OLIVE_LIGHT, critical > 0 ? ERROR : null);
+        addStatCard(1, "LOW STOCK (<" + Constants.LOW_STOCK_THRESHOLD_QUANTITY + ")",
+                String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT, lowStock > 0 ? WARNING : null);
+        addStatCard(2, "EXPIRING / EXPIRED", String.valueOf(expiringSoon),
+                expiringSoon > 0 ? WARNING : OLIVE_LIGHT, expiringSoon > 0 ? WARNING : null);
+        addStatCard(3, "CRITICAL (<" + Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY + ")",
+                String.valueOf(critical), critical > 0 ? ERROR : OLIVE_LIGHT, critical > 0 ? ERROR : null);
         addStatCard(4, "TOTAL PERSONNEL", String.valueOf(totalPersonnel), OLIVE_PALE, null);
 
         buildSupplyAlertActivity();
@@ -212,14 +216,17 @@ public class DashboardScreen extends VBox {
         configureStatGridColumns(4);
 
         int total = model.getFilteredSupplyList().size();
-        int critical = model.getLowStockSupplies(10).size();
-        int lowStock = model.getLowStockSupplies(50).size() - critical;
-        int expiringSoon = getExpiringAndExpired(30).size();
+        int critical = model.getLowStockSupplies(Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY).size();
+        int lowStock = model.getLowStockSupplies(Constants.LOW_STOCK_THRESHOLD_QUANTITY).size() - critical;
+        int expiringSoon = getExpiringAndExpired(Constants.EXPIRY_THRESHOLD_DAYS).size();
 
         addStatCard(0, "TOTAL SUPPLIES", String.valueOf(total), OLIVE_PALE, null);
-        addStatCard(1, "LOW STOCK (<50)", String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT, lowStock > 0 ? WARNING : null);
-        addStatCard(2, "EXPIRING SOON", String.valueOf(expiringSoon), expiringSoon > 0 ? WARNING : OLIVE_LIGHT, expiringSoon > 0 ? WARNING : null);
-        addStatCard(3, "CRITICAL (<10)", String.valueOf(critical), critical > 0 ? ERROR : OLIVE_LIGHT, critical > 0 ? ERROR : null);
+        addStatCard(1, "LOW STOCK (<" + Constants.LOW_STOCK_THRESHOLD_QUANTITY + ")",
+                String.valueOf(lowStock), lowStock > 0 ? WARNING : OLIVE_LIGHT, lowStock > 0 ? WARNING : null);
+        addStatCard(2, "EXPIRING / EXPIRED", String.valueOf(expiringSoon),
+                expiringSoon > 0 ? WARNING : OLIVE_LIGHT, expiringSoon > 0 ? WARNING : null);
+        addStatCard(3, "CRITICAL (<" + Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY + ")",
+                String.valueOf(critical), critical > 0 ? ERROR : OLIVE_LIGHT, critical > 0 ? ERROR : null);
 
         buildSupplyAlertActivity();
     }
@@ -247,10 +254,12 @@ public class DashboardScreen extends VBox {
                 + " -fx-border-width: 0 0 0 3;");
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-text-fill: " + valueColor + "; -fx-font-size: 28px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        valueLabel.setStyle("-fx-text-fill: " + valueColor + "; -fx-font-size: 28px; -fx-font-weight: bold; "
+                + "-fx-font-family: 'Consolas', monospace;");
 
         Label nameLabel = new Label(label);
-        nameLabel.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; -fx-font-family: 'Consolas', monospace;");
+        nameLabel.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; "
+                + "-fx-font-family: 'Consolas', monospace;");
 
         Region topLine = new Region();
         topLine.setPrefHeight(2);
@@ -264,10 +273,11 @@ public class DashboardScreen extends VBox {
 
     /** Aggregates and renders lists of problematic inventory items. */
     private void buildSupplyAlertActivity() {
-        activityPane.getChildren().add(buildSectionHeader("SUPPLY ALERT SUMMARY", "ITEMS REQUIRING ATTENTION"));
+        activityPane.getChildren().add(buildSectionHeader(
+                "SUPPLY ALERT SUMMARY", "ITEMS REQUIRING ATTENTION"));
 
-        List<Supply> lowStock = model.getLowStockSupplies(50);
-        List<Supply> expiringSoon = getExpiringAndExpired(30);
+        List<Supply> lowStock = model.getLowStockSupplies(Constants.LOW_STOCK_THRESHOLD_QUANTITY);
+        List<Supply> expiringSoon = getExpiringAndExpired(Constants.EXPIRY_THRESHOLD_DAYS);
 
         if (lowStock.isEmpty() && expiringSoon.isEmpty()) {
             activityPane.getChildren().add(buildEmptyState("ALL SUPPLY LEVELS NORMAL"));
@@ -277,21 +287,42 @@ public class DashboardScreen extends VBox {
         VBox listBox = new VBox(1);
         listBox.setStyle("-fx-background-color: " + BORDER + ";");
 
-        // Keep track of rendered items to prevent duplicates (an item can be BOTH low stock and expiring)
         List<Supply> displayed = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
 
+        // Process items that are Low Stock (and potentially also Expiring/Expired)
         for (Supply s : lowStock) {
-            boolean isCritical = s.getQuantity() < 10;
+            boolean isCritical = s.getQuantity() < Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY;
+            boolean isAlreadyExpired = s.getExpiryDate().isBefore(today);
+            boolean isExpiringSoon = !isAlreadyExpired
+                    && s.getExpiryDate().isBefore(today.plusDays(Constants.EXPIRY_THRESHOLD_DAYS));
+
+            // Start with the base quantity tag
             String tag = isCritical ? "CRITICAL" : "LOW STOCK";
-            String color = isCritical ? ERROR : WARNING;
+
+            // Append expiry warnings if applicable
+            if (isAlreadyExpired) {
+                tag += " & EXPIRED";
+            } else if (isExpiringSoon) {
+                tag += " & EXPIRING";
+            }
+
+            // If it is critical OR already expired, it deserves the red ERROR color
+            String color = (isCritical || isAlreadyExpired) ? ERROR : WARNING;
 
             listBox.getChildren().add(buildSupplyRow(s, color, tag));
             displayed.add(s);
         }
 
+        // Process items that are ONLY Expiring/Expired (but have healthy stock levels >= 50)
         for (Supply s : expiringSoon) {
             if (!displayed.contains(s)) {
-                listBox.getChildren().add(buildSupplyRow(s, WARNING, "EXPIRING"));
+                boolean isAlreadyExpired = s.getExpiryDate().isBefore(today);
+
+                String tag = isAlreadyExpired ? "EXPIRED" : "EXPIRING";
+                String color = isAlreadyExpired ? ERROR : WARNING;
+
+                listBox.getChildren().add(buildSupplyRow(s, color, tag));
             }
         }
         activityPane.getChildren().add(listBox);
@@ -338,7 +369,8 @@ public class DashboardScreen extends VBox {
         accent.setStyle("-fx-background-color: " + OLIVE + ";");
 
         Label lbl = new Label(title);
-        lbl.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        lbl.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold; "
+                + "-fx-font-family: 'Consolas', monospace;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -368,7 +400,8 @@ public class DashboardScreen extends VBox {
 
         Label name = new Label(supply.getName().toUpperCase());
         name.setMinWidth(220);
-        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-weight: bold; "
+                + "-fx-font-family: 'Consolas', monospace;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -377,7 +410,8 @@ public class DashboardScreen extends VBox {
         qty.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;");
 
         Label expiry = new Label("EXP: " + supply.getExpiryDate());
-        expiry.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace;");
+        expiry.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; "
+                + "-fx-font-family: 'Consolas', monospace;");
 
         Label tagLbl = new Label(tag);
         tagLbl.setStyle("-fx-text-fill: " + accentColor + "; -fx-font-size: 9px;"
@@ -412,11 +446,13 @@ public class DashboardScreen extends VBox {
 
         Label name = new Label(p.getName().toUpperCase());
         name.setMinWidth(240);
-        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-family: 'Consolas', monospace; -fx-padding: 0 0 0 12;");
+        name.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 11px; -fx-font-family: 'Consolas', monospace; "
+                + "-fx-padding: 0 0 0 12;");
 
         Label status = new Label(p.getStatus().toString().toUpperCase());
         status.setMinWidth(120);
-        status.setStyle("-fx-text-fill: " + statusColor + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        status.setStyle("-fx-text-fill: " + statusColor + "; -fx-font-size: 10px; -fx-font-weight: bold; "
+                + "-fx-font-family: 'Consolas', monospace;");
 
         row.getChildren().addAll(sq, name, status);
         return row;
@@ -425,7 +461,8 @@ public class DashboardScreen extends VBox {
     /** Renders placeholder text when an activity list is empty. */
     private Label buildEmptyState(String message) {
         Label lbl = new Label(message);
-        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace; -fx-padding: 16;");
+        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 10px; -fx-font-family: 'Consolas', monospace; "
+                + "-fx-padding: 16;");
         return lbl;
     }
 
@@ -433,7 +470,8 @@ public class DashboardScreen extends VBox {
     private Label colHeader(String text, double minWidth) {
         Label lbl = new Label(text);
         lbl.setMinWidth(minWidth);
-        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; -fx-font-weight: bold; -fx-font-family: 'Consolas', monospace;");
+        lbl.setStyle("-fx-text-fill: " + TEXT_DIM + "; -fx-font-size: 9px; -fx-font-weight: bold; "
+                + "-fx-font-family: 'Consolas', monospace;");
         return lbl;
     }
 

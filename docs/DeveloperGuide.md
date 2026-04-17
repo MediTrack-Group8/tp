@@ -580,12 +580,13 @@ src/test/java/meditrack/
 | `***`    | Field Medic           | see supplies expiring within 30 days               | prioritize consumption before expiry                      |
 | `***`    | Field Medic           | flag a soldier as CASUALTY                         | alert the Medical Officer for assessment                  |
 | `***`    | Medical Officer       | add personnel with blood group and allergies       | maintain comprehensive medical records                    |
+| `***`    | Medical Officer       | edit a personnel's blood group and allergies       | keep medical records accurate and up-to-date              |
 | `***`    | Medical Officer       | assign MC/LIGHT_DUTY with a duration               | have the system auto-revert to FIT when the period ends   |
 | `***`    | Medical Officer       | view personnel needing medical attention            | quickly triage non-FIT soldiers                           |
 | `***`    | Platoon Commander     | add new personnel to the system (PENDING status)   | build and maintain the unit roster                        |
 | `***`    | Platoon Commander     | manually assign duty slots                         | control specific shift assignments                        |
 | `***`    | Platoon Commander     | auto-generate a fair duty roster                   | save time and ensure equitable rotation                   |
-| `***`    | Logistics Officer     | view supply levels sorted by severity              | identify critical shortages at a glance                   |
+| `***`    | Logistics Officer     | add, edit, delete, and view supply levels          | identify critical shortages and manage the inventory      |
 | `***`    | Logistics Officer     | generate a resupply report                         | streamline the requisition process to higher HQ           |
 | `**`     | any role              | export my authorized data to CSV                   | submit reports to higher headquarters                     |
 | `**`     | any role              | see a role-specific dashboard summary              | get a quick operational overview on login                 |

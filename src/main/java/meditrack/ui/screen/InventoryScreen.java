@@ -22,6 +22,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
+import meditrack.commons.core.Constants;
 import meditrack.logic.Logic;
 import meditrack.model.Model;
 import meditrack.model.Supply;
@@ -327,20 +328,25 @@ public class InventoryScreen extends VBox {
             @Override protected void updateItem(LocalDate v, boolean empty) {
                 super.updateItem(v, empty);
                 if (empty || v == null) { setText(null); setStyle(""); return; }
-                int idx = getIndex();
-                if (idx < 0 || idx >= getTableView().getItems().size()) { setText(null); return; }
-                String s = state(getTableView().getItems().get(idx));
-                if ("ERROR".equals(s) && v.isBefore(LocalDate.now())) {
+
+                LocalDate today = LocalDate.now(); // or model.getClock() if you use it
+
+                // Check if actually expired
+                if (v.isBefore(today)) {
                     setText("EXPIRED");
-                    setStyle("-fx-text-fill: " + ERROR + "; -fx-font-weight: bold; -fx-font-size: 11px;"
+                    setStyle("-fx-text-fill: #ffb4ab; -fx-font-weight: bold; -fx-font-size: 11px;"
                             + " -fx-font-family: 'Consolas', monospace; -fx-background-color: transparent;");
-                } else if ("WARNING".equals(s)) {
+                }
+                // Check if expiring within the configured threshold
+                else if (v.isBefore(today.plusDays(Constants.EXPIRY_THRESHOLD_DAYS))) {
                     setText(v.toString().replace("-", ".") + " [!]");
-                    setStyle("-fx-text-fill: " + WARNING + "; -fx-font-size: 10px;"
+                    setStyle("-fx-text-fill: #fbbc00; -fx-font-size: 10px;"
                             + " -fx-font-family: 'Consolas', monospace; -fx-background-color: transparent;");
-                } else {
+                }
+                // Normal date
+                else {
                     setText(v.toString().replace("-", "."));
-                    setStyle("-fx-text-fill: " + SECONDARY + "; -fx-font-size: 11px;"
+                    setStyle("-fx-text-fill: #c8c6c6; -fx-font-size: 11px;"
                             + " -fx-font-family: 'Consolas', monospace; -fx-background-color: transparent;");
                 }
             }
@@ -495,10 +501,10 @@ public class InventoryScreen extends VBox {
     /** Refreshes summary labels using live data from the Model. */
     private void updateFooterStats() {
         int total = model.getFilteredSupplyList().size();
-        int critical = model.getLowStockSupplies(10).size();
+        int critical = model.getLowStockSupplies(Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY).size();
 
         // Subtract critical items so they aren't double-counted in Low Stock
-        int lowStock = model.getLowStockSupplies(50).size() - critical;
+        int lowStock = model.getLowStockSupplies(Constants.LOW_STOCK_THRESHOLD_QUANTITY).size() - critical;
 
         if (totalLabel != null) totalLabel.setText("TOTAL ITEMS: " + total);
         if (lowStockLabel != null) lowStockLabel.setText("LOW STOCK: " + lowStock);
@@ -516,8 +522,13 @@ public class InventoryScreen extends VBox {
     /** Categorizes supply health based on quantity and expiration. */
     private String state(Supply s) {
         LocalDate today = LocalDate.now();
-        if (s.getExpiryDate().isBefore(today) || s.getQuantity() < 10) return "ERROR";
-        if (s.getQuantity() < 50 || s.getExpiryDate().isBefore(today.plusDays(30))) return "WARNING";
+        if (s.getExpiryDate().isBefore(today) || s.getQuantity() < Constants.CRITICAL_STOCK_THRESHOLD_QUANTITY) {
+            return "ERROR";
+        }
+        if (s.getQuantity() < Constants.LOW_STOCK_THRESHOLD_QUANTITY
+                || s.getExpiryDate().isBefore(today.plusDays(Constants.EXPIRY_THRESHOLD_DAYS))) {
+            return "WARNING";
+        }
         return "NORMAL";
     }
 
